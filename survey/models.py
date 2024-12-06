@@ -22,6 +22,7 @@ class Survey(models.Model):
 class Question(models.Model):
     QUESTION_TYPES = [
         ('text', 'Текстовый ответ'),
+        ('textarea', 'Расширенный ответ'),
         ('radio', 'Один вариант ответа'),
         ('checkbox', 'Множественный выбор'),
         ('select', 'Выпадающий список'),
