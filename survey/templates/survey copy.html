@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ survey.title }}</title>
+    <style>
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ survey.title }}</h1>
+    <p>{{ survey.description }}</p>
+    <form method="post">
+        {% csrf_token %}
+        {% for question in survey.questions.all %}
+            <div class="question">
+                <p><strong>{{ question.text }}</strong></p>
+                
+                {% if question.question_type == 'combo' %}
+                    <!-- Комбинированный вопрос -->
+                    <input type="radio" id="yes_{{ question.id }}" name="question_{{ question.id }}" value="yes" onclick="toggleCommentField(false, {{ question.id }})">
+                    <label for="yes_{{ question.id }}">Да</label><br>
+                    <input type="radio" id="no_{{ question.id }}" name="question_{{ question.id }}" value="no" onclick="toggleCommentField(true, {{ question.id }})">
+                    <label for="no_{{ question.id }}">Нет</label><br>
+                    <textarea id="comment_{{ question.id }}" name="comment_{{ question.id }}" class="hidden" placeholder="Объясните ваш выбор"></textarea>
+                
+                {% elif question.question_type == 'text' %}
+                    <!-- Текстовый вопрос -->
+                    <textarea name="question_{{ question.id }}" placeholder="Введите ваш ответ"></textarea>
+                
+                {% elif question.question_type == 'radio' %}
+                    <!-- Вопрос с одним вариантом ответа -->
+                    {% for choice in question.choices.all %}
+                        <input type="radio" id="choice_{{ choice.id }}" name="question_{{ question.id }}" value="{{ choice.id }}">
+                        <label for="choice_{{ choice.id }}">{{ choice.text }}</label><br>
+                    {% endfor %}
+                
+                {% elif question.question_type == 'checkbox' %}
+                    <!-- Вопрос с множественным выбором -->
+                    {% for choice in question.choices.all %}
+                        <input type="checkbox" id="choice_{{ choice.id }}" name="question_{{ question.id }}" value="{{ choice.id }}">
+                        <label for="choice_{{ choice.id }}">{{ choice.text }}</label><br>
+                    {% endfor %}
+                
+                {% elif question.question_type == 'select' %}
+                    <!-- Выпадающий список -->
+                    <select name="question_{{ question.id }}">
+                        {% for choice in question.choices.all %}
+                            <option value="{{ choice.id }}">{{ choice.text }}</option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
+            </div>
+            <hr>
+        {% endfor %}
+        <button type="submit">Отправить</button>
+    </form>
+
+    <script>
+        function toggleCommentField(show, questionId) {
+            const commentField = document.getElementById(`comment_${questionId}`);
+            if (show) {
+                commentField.classList.remove('hidden');
+            } else {
+                commentField.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список опросов</title>
+</head>
+<body>
+    <h1>Список доступных опросов</h1>
+    <ul>
+        {% for survey in surveys %}
+        <li>
+            <strong>{{ survey.title }}</strong> - {{ survey.description }} <br>
+            <a href="{{ survey.get_absolute_url }}">Пройти опрос</a> |
+            <a href="{{ survey.get_results_url }}">Просмотреть результаты</a> |
+            <a href="{{ survey.edit_absolute_url }}">Изменить опрос</a>
+            <ul>
+                {% for question in questions %}
+                    <li>
+                        Вопрос: {{ question.text }} |
+                        <a href="{{ question.get_absolute_url }}">Изменить</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </li>
+        {% endfor %}
+    </ul>
+    {% if not surveys %}
+        <p>Нет доступных опросов.</p>
+    {% endif %}
+</body>
+</html>

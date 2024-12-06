@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактировать вопрос</title>
+    <style>
+        .form-group {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Редактировать вопрос: {{ question.text }}</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            {{ question_form.as_p }}
+        </div>
+
+        <h3>Существующие варианты</h3>
+        {% for choice_form in choice_forms %}
+            <div class="form-group">
+                <label>Вариант {{ forloop.counter }}</label>
+                {{ choice_form.as_p }}
+                <label>
+                    <input type="checkbox" name="requires_comment_{{ choice_form.instance.id }}" 
+                           {% if choice_form.instance.requires_comment %}checked{% endif %}>
+                    Требуется комментарий
+                </label>
+            </div>
+        {% endfor %}
+
+        <h4>Добавить новые варианты</h4>
+        <div id="new-choices">
+            <input type="text" name="new_choice" placeholder="Новый вариант">
+        </div>
+        <button type="button" onclick="addNewChoice()">Добавить еще вариант</button>
+        <br><br>
+        <button type="submit">Сохранить изменения</button>
+    </form>
+
+    <script>
+        function addNewChoice() {
+            const newChoicesDiv = document.getElementById('new-choices');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.name = 'new_choice';
+            input.placeholder = 'Новый вариант';
+            newChoicesDiv.appendChild(input);
+        }
+    </script>
+</body>
+</html>

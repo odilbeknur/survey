@@ -1,0 +1,56 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survey Results</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>Survey Results</h1>
+
+    {% for stat in statistics %}
+        <h2>{{ stat.question.text }}</h2> <!-- Question in Header -->
+
+        {% if question.question_type|in_list:"radio,checkbox" %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Option</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for choice_stat in stat.stats %}
+                        <tr>
+                            <td>{{ choice_stat.choice__text }}</td>
+                            <td>{{ choice_stat.count }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Text Answers:</p>
+            <ul>
+                {% for text in stat.stats %}
+                    <li>{{ text }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endfor %}
+</body>
+</html>

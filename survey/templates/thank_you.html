@@ -1,0 +1,29 @@
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ survey.title }}</title>
+    <style>
+        .hidden {
+            display: none;
+        }
+    </style>
+    <link type="text/css" href="{% static 'style.css' %}" rel="stylesheet">
+</head>
+<body>
+    <div class="container" id="thanks">
+        <strong><h1 style="color:black">Спасибо за участие в опросе!</h1></strong>
+    </div>
+</body>
+<script>
+    function toggleCommentField(show, questionId) {
+        const commentField = document.getElementById(`comment_${questionId}`);
+        if (show) {
+            commentField.classList.remove('hidden');
+        } else {
+            commentField.classList.add('hidden');
+        }
+    }
+</script>
+</html>
