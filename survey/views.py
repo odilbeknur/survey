@@ -18,19 +18,35 @@ def survey_view(request, survey_id):
         response = Response.objects.create(survey=survey)
 
         for question in survey.questions.all():
-            # Получаем данные из POST-запроса
+            # Get the selected answer data for the question
             answer_data = request.POST.get(f'question_{question.id}')
-            comment = request.POST.get(f'comment_{question.id}', '').strip()
+            
+            # Handle 'combo' type questions with choice + comment
+            if question.question_type == 'combo':
+                if answer_data:
+                    # Retrieve the choice
+                    choice = question.choices.get(id=answer_data)
+                    # Retrieve the comment for this choice
+                    comment = request.POST.get(f'comment_{question.id}_{answer_data}', '').strip()
+                    # Format as "choice: comment"
+                    formatted_answer = f"{choice.text}: {comment}" if comment else choice.text
+                    # Save the formatted answer
+                    Answer.objects.create(
+                        response=response,
+                        question=question,
+                        text_answer=formatted_answer
+                    )
 
-            # Обработка текстового вопроса
-            if question.question_type == 'text':
+            # Handle text questions
+            elif question.question_type == 'text':
                 if answer_data:
                     Answer.objects.create(
                         response=response,
                         question=question,
                         text_answer=answer_data
                     )
-            # Обработка выбора одного варианта
+
+            # Handle single-choice questions (radio, select)
             elif question.question_type in ['radio', 'select']:
                 if answer_data:
                     choice = question.choices.get(id=answer_data)
@@ -39,36 +55,27 @@ def survey_view(request, survey_id):
                         question=question,
                         choice=choice
                     )
-                    # Если выбранный вариант требует комментарий
-                    if choice.requires_comment and comment:
-                        Answer.objects.create(
-                            response=response,
-                            question=question,
-                            text_answer=comment
-                        )
-            # Обработка множественного выбора
+
+            # Handle multiple-choice questions (checkbox)
             elif question.question_type == 'checkbox':
                 selected_choices = request.POST.getlist(f'question_{question.id}')
                 for choice_id in selected_choices:
                     choice = question.choices.get(id=choice_id)
+                    comment = request.POST.get(f'comment_{choice_id}', '').strip()
+                    # Format as "choice: comment"
+                    formatted_answer = f"{choice.text}: {comment}" if comment else choice.text
                     Answer.objects.create(
                         response=response,
                         question=question,
-                        choice=choice
+                        text_answer=formatted_answer
                     )
-                    # Если выбранный вариант требует комментарий
-                    if choice.requires_comment:
-                        comment = request.POST.get(f'comment_{choice.id}', '').strip()
-                        if comment:
-                            Answer.objects.create(
-                                response=response,
-                                question=question,
-                                text_answer=comment
-                            )
 
-        return redirect('survey:thank_you')  # Перенаправление на страницу благодарности
+        # Redirect to a thank-you page after successful submission
+        return redirect('survey:thank_you')
 
+    # Render the survey form if not a POST request
     return render(request, 'survey.html', {'survey': survey})
+
 
 
 def thank_you_view(request):
@@ -129,7 +136,7 @@ def survey_responses_table(request, survey_id):
 
     table_data = []
     for response in responses:
-        row = {'response_id': response.id} 
+        row = {'response_id': response.id}
         answers = {answer.question.id: answer for answer in response.answers.all()}
         for question in questions:
             if question.id in answers:
@@ -139,12 +146,16 @@ def survey_responses_table(request, survey_id):
                 elif question.question_type in ['radio', 'select']:
                     row[question.id] = answer.choice.text if answer.choice else ''
                 elif question.question_type == 'checkbox':
-                    choices = Answer.objects.filter(response=response, question=question).values_list('choice__text', flat=True)
-                    row[question.id] = ', '.join(choices)
+                    # Safely handle None values in choices
+                    choices = Answer.objects.filter(response=response, question=question).values_list('text_answer', flat=True)
+                    row[question.id] = ', '.join(filter(None, choices))  # Filter out None values
+                elif question.question_type == 'combo':
+                    # For combo, use text_answer directly
+                    row[question.id] = answer.text_answer
                 else:
                     row[question.id] = ''
             else:
-                row[question.id] = ''  
+                row[question.id] = ''
         table_data.append(row)
 
     return render(request, 'survey_responses_table.html', {
