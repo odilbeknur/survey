@@ -18,6 +18,13 @@
             {{ question_form.as_p }}
         </div>
 
+        <div class="form-group">
+            <label>
+                Уникальный:
+                <input type="checkbox" name="is_unique" {% if question.is_unique %}checked{% endif %}>
+            </label>
+        </div>
+
         <h3>Существующие варианты</h3>
         {% for choice_form in choice_forms %}
             <div class="form-group">

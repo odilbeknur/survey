@@ -1,11 +1,17 @@
+import openpyxl
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from .models import Survey, Response, Answer, Question, Choice
 from .forms import SurveyForm, QuestionForm, ChoiceForm, EditQuestionForm, EditChoiceForm
 from django.db.models import Count
 from django.shortcuts import render, get_object_or_404, redirect
+from django.core.exceptions import ValidationError
+from django.contrib import messages
+from datetime import timedelta
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 
-
-
+@login_required
 def survey_list_view(request):
     surveys = Survey.objects.all()  
     questions  = Question.objects.all()  
@@ -13,74 +19,106 @@ def survey_list_view(request):
 
 def survey_view(request, survey_id):
     survey = get_object_or_404(Survey, id=survey_id)
+    errors = {}  
+    answers_to_save = []  
+    has_errors = False  
+
+    # Check if the user already submitted this survey
+    last_submission_time = request.session.get(f'survey_{survey_id}_last_submission', None)
+    if last_submission_time:
+        last_submission_time = timezone.datetime.fromisoformat(last_submission_time)
+        time_diff = timezone.now() - last_submission_time
+        if time_diff < timedelta(minutes=5):
+            # minutes_left = 5 - time_diff.total_seconds() // 60
+            messages.info(request, f'Вы уже заполняли форму. Спасибо за участие!')
+            return redirect('survey:thank_you')  # Redirect to thank you page or custom message page
 
     if request.method == 'POST':
-        response = Response.objects.create(survey=survey)
-
         for question in survey.questions.all():
-            # Get the selected answer data for the question
             answer_data = request.POST.get(f'question_{question.id}')
-            
-            # Handle 'combo' type questions with choice + comment
-            if question.question_type == 'combo':
-                if answer_data:
-                    # Retrieve the choice
+
+            try:
+                # Check for duplicate answers
+                if question.is_unique and answer_data:
+                    if question.question_type in ['text', 'combo', 'radio', 'select']:
+                        duplicate_check = Answer.objects.filter(
+                            question=question, 
+                            text_answer=answer_data
+                        )
+                        if duplicate_check.exists():
+                            raise ValidationError(f"'{answer_data}' такая запись уже существует.")
+
+                # Prepare 'combo' type answers with choice + comment
+                if question.question_type == 'combo' and answer_data:
                     choice = question.choices.get(id=answer_data)
-                    # Retrieve the comment for this choice
                     comment = request.POST.get(f'comment_{question.id}_{answer_data}', '').strip()
-                    # Format as "choice: comment"
                     formatted_answer = f"{choice.text}: {comment}" if comment else choice.text
-                    # Save the formatted answer
-                    Answer.objects.create(
-                        response=response,
-                        question=question,
-                        text_answer=formatted_answer
-                    )
+                    answers_to_save.append({
+                        'question': question,
+                        'text_answer': formatted_answer,
+                        'choice': None
+                    })
 
-            # Handle text questions
-            elif question.question_type == 'text':
-                if answer_data:
-                    Answer.objects.create(
-                        response=response,
-                        question=question,
-                        text_answer=answer_data
-                    )
+                # Prepare text answers
+                elif question.question_type in ['text', 'textarea'] and answer_data:
+                    answers_to_save.append({
+                        'question': question,
+                        'text_answer': answer_data,
+                        'choice': None
+                    })
 
-            # Handle single-choice questions (radio, select)
-            elif question.question_type in ['radio', 'select']:
-                if answer_data:
+                # Prepare single-choice answers
+                elif question.question_type in ['radio', 'select'] and answer_data:
                     choice = question.choices.get(id=answer_data)
-                    Answer.objects.create(
-                        response=response,
-                        question=question,
-                        choice=choice
-                    )
+                    answers_to_save.append({
+                        'question': question,
+                        'text_answer': None,
+                        'choice': choice
+                    })
 
-            # Handle multiple-choice questions (checkbox)
-            elif question.question_type == 'checkbox':
-                selected_choices = request.POST.getlist(f'question_{question.id}')
-                for choice_id in selected_choices:
-                    choice = question.choices.get(id=choice_id)
-                    comment = request.POST.get(f'comment_{choice_id}', '').strip()
-                    # Format as "choice: comment"
-                    formatted_answer = f"{choice.text}: {comment}" if comment else choice.text
-                    Answer.objects.create(
-                        response=response,
-                        question=question,
-                        text_answer=formatted_answer
-                    )
+                # Prepare multiple-choice answers
+                elif question.question_type == 'checkbox':
+                    selected_choices = request.POST.getlist(f'question_{question.id}')
+                    for choice_id in selected_choices:
+                        choice = question.choices.get(id=choice_id)
+                        comment = request.POST.get(f'comment_{choice_id}', '').strip()
+                        formatted_answer = f"{choice.text}: {comment}" if comment else choice.text
+                        answers_to_save.append({
+                            'question': question,
+                            'text_answer': formatted_answer,
+                            'choice': None
+                        })
 
-        # Redirect to a thank-you page after successful submission
-        return redirect('survey:thank_you')
+            except ValidationError as e:
+                # Capture validation error and continue to next question
+                errors[question.id] = str(e)
+                has_errors = True
 
-    # Render the survey form if not a POST request
-    return render(request, 'survey.html', {'survey': survey})
+        # If there are no errors, save all valid answers
+        if not has_errors:
+            response = Response.objects.create(survey=survey)  # Create the response only if no errors
+            for answer in answers_to_save:
+                Answer.objects.create(
+                    response=response,
+                    question=answer['question'],
+                    text_answer=answer['text_answer'],
+                    choice=answer['choice']
+                )
 
+            # Mark the survey as submitted and store the submission timestamp
+            request.session[f'survey_{survey_id}_last_submission'] = timezone.now().isoformat()
+
+            # Redirect to the thank you page
+            return redirect('survey:thank_you')
+
+    # Render the survey form with validation errors
+    return render(request, 'survey.html', {'survey': survey, 'errors': errors})
 
 
 def thank_you_view(request):
     return render(request, 'thank_you.html')
 
+@login_required
 def add_question_view(request):
     if request.method == 'POST':
         question_form = QuestionForm(request.POST)
@@ -106,7 +144,7 @@ def add_question_view(request):
 
 
 
-
+@login_required
 def survey_results_view(request, survey_id):
     responses = Response.objects.filter(survey_id=survey_id).prefetch_related('answers__question')
     questions = Question.objects.filter(survey_id=survey_id)
@@ -129,6 +167,7 @@ def survey_results_view(request, survey_id):
         'statistics': statistics,
     })
 
+@login_required
 def survey_responses_table(request, survey_id):
     survey = Survey.objects.get(id=survey_id)
     questions = Question.objects.filter(survey=survey).order_by('id')
@@ -141,16 +180,14 @@ def survey_responses_table(request, survey_id):
         for question in questions:
             if question.id in answers:
                 answer = answers[question.id]
-                if question.question_type == 'text':
+                if question.question_type in ['text', 'textarea']:
                     row[question.id] = answer.text_answer
                 elif question.question_type in ['radio', 'select']:
                     row[question.id] = answer.choice.text if answer.choice else ''
                 elif question.question_type == 'checkbox':
-                    # Safely handle None values in choices
                     choices = Answer.objects.filter(response=response, question=question).values_list('text_answer', flat=True)
-                    row[question.id] = ', '.join(filter(None, choices))  # Filter out None values
+                    row[question.id] = ', '.join(filter(None, choices))
                 elif question.question_type == 'combo':
-                    # For combo, use text_answer directly
                     row[question.id] = answer.text_answer
                 else:
                     row[question.id] = ''
@@ -158,12 +195,34 @@ def survey_responses_table(request, survey_id):
                 row[question.id] = ''
         table_data.append(row)
 
+    # Excel file download logic
+    if request.GET.get('download') == 'true':
+        # Create an Excel workbook
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Survey Responses'
+
+        # Create header row
+        headers = ['ID Респондента'] + [question.text for question in questions]
+        ws.append(headers)
+
+        # Add rows for each response
+        for row in table_data:
+            ws.append([row['response_id']] + [row.get(question.id, '') for question in questions])
+
+        # Prepare the HttpResponse to download the file
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="{survey.title}_responses.xlsx"'
+        wb.save(response)
+        return response
+
     return render(request, 'survey_responses_table.html', {
         'survey': survey,
         'questions': questions,
         'table_data': table_data,
     })
 
+@login_required
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
     choices = Choice.objects.filter(question=question)
@@ -200,7 +259,7 @@ def edit_question_view(request, question_id):
         'question': question,
     })
 
-
+@login_required
 def edit_survey_view(request, survey_id):
     survey = get_object_or_404(Survey, id=survey_id)
 
@@ -212,3 +271,9 @@ def edit_survey_view(request, survey_id):
         form = SurveyForm(survey=survey)
 
     return render(request, 'edit_survey.html', {'form': form, 'survey': survey})
+
+
+def custom_404(request, exception):
+    return render(request, '404.html', status=404)
+
+handler404 = custom_404

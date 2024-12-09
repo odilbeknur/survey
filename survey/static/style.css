@@ -214,8 +214,27 @@ form {
   background: var(--color-white);
   padding: 2.5rem 0.625rem;
   border-radius: 0.25rem;
+  text-align: center;
 }
 #thanks h1{
   background: var(--color-white);
   text-align: center;
 }
+
+.submit-btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  font-size: 16px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.submit-btn:hover {
+  background-color: #45a049;
+}
+

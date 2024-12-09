@@ -54,7 +54,7 @@ class SurveyForm(forms.Form):
 class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
-        fields = ['survey', 'text', 'question_type', 'required']
+        fields = ['survey', 'text', 'question_type', 'required', 'is_unique']
 
 class ChoiceForm(forms.ModelForm):
     class Meta:
@@ -71,3 +71,5 @@ class EditChoiceForm(forms.ModelForm):
     class Meta:
         model = Choice
         fields = ['text']
+
+

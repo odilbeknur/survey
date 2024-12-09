@@ -1,5 +1,7 @@
 from django.db import models
 from django.urls import reverse
+from django.core.exceptions import ValidationError
+
 
 class Survey(models.Model):
     title = models.CharField(max_length=255)
@@ -24,7 +26,6 @@ class Question(models.Model):
         ('text', 'Текстовый ответ'),
         ('textarea', 'Расширенный ответ'),
         ('radio', 'Один вариант ответа'),
-        ('checkbox', 'Множественный выбор'),
         ('select', 'Выпадающий список'),
         ('combo', 'Комбинированный (Да/Нет + Текст)')
     ]
@@ -32,12 +33,14 @@ class Question(models.Model):
     text = models.CharField(max_length=255)
     question_type = models.CharField(max_length=50, choices=QUESTION_TYPES)
     required = models.BooleanField(default=True)
+    is_unique = models.BooleanField(default=False) 
 
     def __str__(self):
         return self.text
 
     def get_absolute_url(self):
         return reverse('survey:edit_question', args=[self.id])
+
 
 
 class Choice(models.Model):
@@ -62,22 +65,28 @@ class Response(models.Model):
 class Answer(models.Model):
     response = models.ForeignKey(Response, related_name='answers', on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    choice = models.ForeignKey(Choice, on_delete=models.CASCADE, null=True, blank=True)  # For radio/checkbox
-    text_answer = models.TextField(null=True, blank=True)  # For text responses
+    choice = models.ForeignKey(Choice, on_delete=models.CASCADE, null=True, blank=True)  
+    text_answer = models.TextField(null=True, blank=True)  
 
     def __str__(self):
-        # Properly handle cases with no choice or text answer
         if self.choice:
             return f"Answer: {self.choice.text}"
         if self.text_answer:
             return f"Answer: {self.text_answer}"
         return "No answer provided"
 
+    def clean(self):
+        super().clean()
 
-class DependentAnswer(models.Model):
-    question = models.ForeignKey(Question, related_name='dependent_answers', on_delete=models.CASCADE)
-    response = models.ForeignKey(Response, related_name='dependent_answers', on_delete=models.CASCADE)
-    comment = models.TextField(blank=True, null=True)  # Field for additional comments
+        if self.question.is_unique and self.text_answer:
+            if Answer.objects.filter(
+                question=self.question, 
+                text_answer__iexact=self.text_answer  
+            ).exclude(id=self.id).exists():
+                raise ValidationError(f"'{self.text_answer}' уже существует для этого вопроса.")
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
-    def __str__(self):
-        return f"Comment for question '{self.question.text}': {self.comment or 'No comment provided'}"
+

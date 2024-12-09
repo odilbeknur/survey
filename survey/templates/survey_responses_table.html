@@ -1,5 +1,5 @@
 {% load custom_filters %}
-<!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -25,6 +25,9 @@
 </head>
 <body>
     <h1>Ответы на опрос: {{ survey.title }}</h1>
+
+    <!-- Add a download button -->
+    <a href="?download=true" class="btn-download">Скачать в Excel</a>
 
     <table>
         <thead>
