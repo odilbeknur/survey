@@ -16,7 +16,7 @@
 <body>
     <div class="container">
     <h1>{{ survey.title }}</h1>
-    <p>{{ survey.description }}</p>
+    <p style="color:white;">({{ survey.description }})</p>
     <form method="post" id="survey-form">
         {% csrf_token %}
         {% for question in survey.questions.all %}
