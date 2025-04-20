@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,10 +14,14 @@
     <h1>Редактировать вопрос: {{ question.text }}</h1>
     <form method="post">
         {% csrf_token %}
+        
+        <!-- Форма для редактирования вопроса -->
         <div class="form-group">
+            <h3>Редактировать вопрос</h3>
             {{ question_form.as_p }}
         </div>
 
+        <!-- Отметка о уникальности вопроса -->
         <div class="form-group">
             <label>
                 Уникальный:
@@ -30,6 +34,8 @@
             <div class="form-group">
                 <label>Вариант {{ forloop.counter }}</label>
                 {{ choice_form.as_p }}
+                
+                <!-- Добавление поля для комментария, если требуется -->
                 <label>
                     <input type="checkbox" name="requires_comment_{{ choice_form.instance.id }}" 
                            {% if choice_form.instance.requires_comment %}checked{% endif %}>
@@ -38,23 +44,27 @@
             </div>
         {% endfor %}
 
+        <!-- Добавление новых вариантов -->
         <h4>Добавить новые варианты</h4>
         <div id="new-choices">
-            <input type="text" name="new_choice" placeholder="Новый вариант">
+            <input type="text" name="new_choice_1" placeholder="Новый вариант">
         </div>
         <button type="button" onclick="addNewChoice()">Добавить еще вариант</button>
+
         <br><br>
         <button type="submit">Сохранить изменения</button>
     </form>
 
     <script>
+        // Функция для добавления нового текстового поля для варианта ответа
         function addNewChoice() {
             const newChoicesDiv = document.getElementById('new-choices');
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.name = 'new_choice';
-            input.placeholder = 'Новый вариант';
-            newChoicesDiv.appendChild(input);
+            const newInput = document.createElement('input');
+            const index = newChoicesDiv.children.length + 1;
+            newInput.type = 'text';
+            newInput.name = `new_choice_${index}`;
+            newInput.placeholder = 'Новый вариант';
+            newChoicesDiv.appendChild(newInput);
         }
     </script>
 </body>

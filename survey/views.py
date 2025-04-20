@@ -10,6 +10,7 @@ from django.contrib import messages
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 
 @login_required
 def survey_list_view(request):
@@ -19,36 +20,32 @@ def survey_list_view(request):
 
 def survey_view(request, survey_id):
     survey = get_object_or_404(Survey, id=survey_id)
-    errors = {}  
-    answers_to_save = []  
-    has_errors = False  
+    errors = {}
+    answers_to_save = []
+    has_errors = False
 
-    # Check if the user already submitted this survey
+    # Проверка времени последней отправки
     last_submission_time = request.session.get(f'survey_{survey_id}_last_submission', None)
     if last_submission_time:
         last_submission_time = timezone.datetime.fromisoformat(last_submission_time)
         time_diff = timezone.now() - last_submission_time
         if time_diff < timedelta(minutes=5):
-            # minutes_left = 5 - time_diff.total_seconds() // 60
-            messages.info(request, f'Вы уже заполняли форму. Спасибо за участие!')
-            return redirect('survey:thank_you')  # Redirect to thank you page or custom message page
+            messages.info(request, 'Вы уже заполнили форму. Спасибо за участие!')
+            return redirect('survey:thank_you')
 
     if request.method == 'POST':
         for question in survey.questions.all():
             answer_data = request.POST.get(f'question_{question.id}')
-
             try:
-                # Check for duplicate answers
                 if question.is_unique and answer_data:
                     if question.question_type in ['text', 'combo', 'radio', 'select']:
                         duplicate_check = Answer.objects.filter(
-                            question=question, 
+                            question=question,
                             text_answer=answer_data
                         )
                         if duplicate_check.exists():
-                            raise ValidationError(f"'{answer_data}' такая запись уже существует.")
+                            raise ValidationError(f"Ответ '{answer_data}' уже существует для этого вопроса.")
 
-                # Prepare 'combo' type answers with choice + comment
                 if question.question_type == 'combo' and answer_data:
                     choice = question.choices.get(id=answer_data)
                     comment = request.POST.get(f'comment_{question.id}_{answer_data}', '').strip()
@@ -59,7 +56,6 @@ def survey_view(request, survey_id):
                         'choice': None
                     })
 
-                # Prepare text answers
                 elif question.question_type in ['text', 'textarea'] and answer_data:
                     answers_to_save.append({
                         'question': question,
@@ -67,7 +63,6 @@ def survey_view(request, survey_id):
                         'choice': None
                     })
 
-                # Prepare single-choice answers
                 elif question.question_type in ['radio', 'select'] and answer_data:
                     choice = question.choices.get(id=answer_data)
                     answers_to_save.append({
@@ -76,13 +71,14 @@ def survey_view(request, survey_id):
                         'choice': choice
                     })
 
-                # Prepare multiple-choice answers
                 elif question.question_type == 'checkbox':
                     selected_choices = request.POST.getlist(f'question_{question.id}')
                     for choice_id in selected_choices:
                         choice = question.choices.get(id=choice_id)
                         comment = request.POST.get(f'comment_{choice_id}', '').strip()
                         formatted_answer = f"{choice.text}: {comment}" if comment else choice.text
+                        print("ANSWER: ", formatted_answer)
+                        print(choice)
                         answers_to_save.append({
                             'question': question,
                             'text_answer': formatted_answer,
@@ -90,30 +86,35 @@ def survey_view(request, survey_id):
                         })
 
             except ValidationError as e:
-                # Capture validation error and continue to next question
                 errors[question.id] = str(e)
                 has_errors = True
 
-        # If there are no errors, save all valid answers
         if not has_errors:
-            response = Response.objects.create(survey=survey)  # Create the response only if no errors
+            # Замените ниже на фактическое имя пользователя и станцию
+            employee_name = request.user.get_full_name() if request.user.is_authenticated else "Аноним"
+            
+            survey = Response.objects.create(
+                survey=survey,
+                employee_name=employee_name,
+                station_name = settings.STATION_NAME
+            )
+
             for answer in answers_to_save:
                 Answer.objects.create(
-                    response=response,
+                    session=survey,
                     question=answer['question'],
                     text_answer=answer['text_answer'],
                     choice=answer['choice']
                 )
 
-            # Mark the survey as submitted and store the submission timestamp
-            request.session[f'survey_{survey_id}_last_submission'] = timezone.now().isoformat()
+            survey.evaluate()
+            survey.finished_at = timezone.now()
+            survey.save()
 
-            # Redirect to the thank you page
+            request.session[f'survey_{survey_id}_last_submission'] = timezone.now().isoformat()
             return redirect('survey:thank_you')
 
-    # Render the survey form with validation errors
     return render(request, 'survey.html', {'survey': survey, 'errors': errors})
-
 
 def thank_you_view(request):
     return render(request, 'thank_you.html')
@@ -171,12 +172,12 @@ def survey_results_view(request, survey_id):
 def survey_responses_table(request, survey_id):
     survey = Survey.objects.get(id=survey_id)
     questions = Question.objects.filter(survey=survey).order_by('id')
-    responses = Response.objects.filter(survey=survey).prefetch_related('answers__question', 'answers__choice')
+    sessions = Response.objects.filter(survey=survey).prefetch_related('answers__question', 'answers__choice')
 
     table_data = []
-    for response in responses:
-        row = {'response_id': response.id}
-        answers = {answer.question.id: answer for answer in response.answers.all()}
+    for session in sessions:
+        row = {'session_id': session.id}
+        answers = {answer.question.id: answer for answer in session.answers.all()}
         for question in questions:
             if question.id in answers:
                 answer = answers[question.id]
@@ -185,7 +186,7 @@ def survey_responses_table(request, survey_id):
                 elif question.question_type in ['radio', 'select']:
                     row[question.id] = answer.choice.text if answer.choice else ''
                 elif question.question_type == 'checkbox':
-                    choices = Answer.objects.filter(response=response, question=question).values_list('text_answer', flat=True)
+                    choices = Answer.objects.filter(session=session, question=question).values_list('text_answer', flat=True)
                     row[question.id] = ', '.join(filter(None, choices))
                 elif question.question_type == 'combo':
                     row[question.id] = answer.text_answer
@@ -241,11 +242,16 @@ def edit_question_view(request, question_id):
 
             # Обработка новых вариантов
             new_choices = request.POST.getlist('new_choice')
-            for new_choice_text in new_choices:
-                if new_choice_text.strip():
-                    Choice.objects.create(question=question, text=new_choice_text.strip(), requires_comment=False)
+            for new_text in new_choices:
+                new_text = new_text.strip()
+                if new_text and not choices.filter(text=new_text).exists():
+                    Choice.objects.create(
+                        question=question,
+                        text=new_text,
+                        requires_comment=False
+                    )
 
-            return redirect('survey:survey_list')  # Перенаправление на список опросов
+            return redirect('survey:survey_list')  # Измени на нужную тебе ссылку
     else:
         question_form = EditQuestionForm(instance=question)
         choice_forms = [
@@ -266,11 +272,15 @@ def edit_survey_view(request, survey_id):
     if request.method == 'POST':
         form = SurveyForm(request.POST, survey=survey)
         if form.is_valid():
-            return redirect('survey:survey_list') 
+            # Здесь можно добавить обработку результатов, если нужно
+            return redirect('survey:survey_list')  # Или на другую страницу, если нужно
     else:
         form = SurveyForm(survey=survey)
 
-    return render(request, 'edit_survey.html', {'form': form, 'survey': survey})
+    return render(request, 'edit_survey.html', {
+        'form': form,
+        'survey': survey,
+    })
 
 
 def custom_404(request, exception):

@@ -1,46 +1,48 @@
-
 services:
-  survey_db:
-    restart: always
+  examiner_db:
+    container_name: examiner_db
     image: postgres:16.3-alpine3.20
-    container_name: survey_db
-    environment:
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "root@123"
-      POSTGRES_DB: "survey"
-    env_file:
-      - ./.env
+    restart: always
+    env_file:  
+      - .env.production
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - /var/lib/docker/volumes/survey_postgres_data/_data:/var/lib/postgresql/data/
+      - postgres_data:/var/lib/postgresql/data  
+    networks:
+      - examiner_network 
 
   django:
-    restart: always
+    container_name: examiner_main
     build: .
-    container_name: survey_main
+    restart: always
     command: >
-      sh -c "python manage.py collectstatic --noinput && python manage.py makemigrations &&
+      sh -c "python manage.py collectstatic --noinput &&
              python manage.py migrate &&
              gunicorn --workers 4 --bind 0.0.0.0:8000 mysurvey.wsgi:application"
+    env_file:  
+      - .env.production
+    depends_on:
+      - examiner_db
     volumes:
       - .:/code
       - static_volume:/code/staticfiles
       - media_volume:/code/mediafiles
-    environment:
-      DJANGO_SETTINGS_MODULE: mysurvey.production
-    depends_on:
-      - survey_db
+    networks:
+      - examiner_network
 
   adminer:
     image: adminer
     restart: always
     ports:
-      - "5050:8080"
+      - "5052:8080"
+    networks:
+      - examiner_network
 
   nginx:
     build: ./nginx
-    container_name: survey_nginx
+    container_name: examiner_nginx
+    restart: always
     volumes:
       - static_volume:/code/staticfiles
       - media_volume:/code/mediafiles
@@ -48,8 +50,15 @@ services:
       - "7777:80"
     depends_on:
       - django
+    networks:
+      - examiner_network
 
 volumes:
   postgres_data:
   static_volume:
   media_volume:
+
+networks:
+  examiner_network:
+    name: examiner_network
+    driver: bridge

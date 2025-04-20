@@ -11,6 +11,8 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
+
+ENVIRONMENT = os.getenv("DJANGO_ENV", "production")
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysurvey.settings')
 
 application = get_wsgi_application()
