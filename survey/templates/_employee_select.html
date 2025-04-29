@@ -1,0 +1,24 @@
+<label for="employee-select">Сотрудник:</label>
+<select id="employee-select" name="employee">
+  <option value="">-- Выберите сотрудника --</option>
+  {% for emp in employees %}
+    <option value="{{ emp.id }}">{{ emp.first_name }} {{ emp.last_name }} {{ emp.father_name }}</option>
+  {% endfor %}
+</select>
+
+<input type="hidden" id="employee-name" name="employee_name" />
+
+<script>
+    document.body.addEventListener('htmx:afterSettle', function(evt) {
+      const select = document.getElementById("employee-select");
+      const hiddenInput = document.getElementById("employee-name");
+  
+      if (select && hiddenInput) {
+        select.addEventListener("change", () => {
+          const selectedOption = select.options[select.selectedIndex];
+          hiddenInput.value = selectedOption.text;
+        });
+      }
+    });
+  </script>
+  

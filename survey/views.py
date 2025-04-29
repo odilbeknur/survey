@@ -11,29 +11,26 @@ from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
+import requests
 
+
+# Отображение списка форм
 @login_required
 def survey_list_view(request):
     surveys = Survey.objects.all()  
     questions  = Question.objects.all()  
     return render(request, 'survey_list.html', {'surveys': surveys, 'questions': questions})
 
+
+# Отображение формы по id
 def survey_view(request, survey_id):
     survey = get_object_or_404(Survey, id=survey_id)
     errors = {}
     answers_to_save = []
     has_errors = False
 
-    # Проверка времени последней отправки
-    last_submission_time = request.session.get(f'survey_{survey_id}_last_submission', None)
-    if last_submission_time:
-        last_submission_time = timezone.datetime.fromisoformat(last_submission_time)
-        time_diff = timezone.now() - last_submission_time
-        if time_diff < timedelta(minutes=5):
-            messages.info(request, 'Вы уже заполнили форму. Спасибо за участие!')
-            return redirect('survey:thank_you')
-
     if request.method == 'POST':
+        print("Form submitted.")  # Добавляем лог, чтобы увидеть, когда форма отправляется
         for question in survey.questions.all():
             answer_data = request.POST.get(f'question_{question.id}')
             try:
@@ -77,8 +74,6 @@ def survey_view(request, survey_id):
                         choice = question.choices.get(id=choice_id)
                         comment = request.POST.get(f'comment_{choice_id}', '').strip()
                         formatted_answer = f"{choice.text}: {comment}" if comment else choice.text
-                        print("ANSWER: ", formatted_answer)
-                        print(choice)
                         answers_to_save.append({
                             'question': question,
                             'text_answer': formatted_answer,
@@ -90,35 +85,36 @@ def survey_view(request, survey_id):
                 has_errors = True
 
         if not has_errors:
-            # Замените ниже на фактическое имя пользователя и станцию
-            employee_name = request.user.get_full_name() if request.user.is_authenticated else "Аноним"
-            
-            survey = Response.objects.create(
+            employee_name = request.session.get('employee_name') or "Неизвестный"
+            survey_response = Response.objects.create(
                 survey=survey,
                 employee_name=employee_name,
-                station_name = settings.STATION_NAME
+                station_name=settings.STATION_NAME
             )
 
             for answer in answers_to_save:
                 Answer.objects.create(
-                    session=survey,
+                    session=survey_response,
                     question=answer['question'],
                     text_answer=answer['text_answer'],
                     choice=answer['choice']
                 )
 
-            survey.evaluate()
-            survey.finished_at = timezone.now()
-            survey.save()
+            survey_response.evaluate()
+            survey_response.finished_at = timezone.now()
+            survey_response.save()
 
-            request.session[f'survey_{survey_id}_last_submission'] = timezone.now().isoformat()
             return redirect('survey:thank_you')
 
     return render(request, 'survey.html', {'survey': survey, 'errors': errors})
 
+
+# Страница после завершения теста
 def thank_you_view(request):
     return render(request, 'thank_you.html')
 
+
+# Добавление вопросов
 @login_required
 def add_question_view(request):
     if request.method == 'POST':
@@ -144,7 +140,7 @@ def add_question_view(request):
     return render(request, 'add_question.html', {'question_form': question_form})
 
 
-
+# Отображение результатов и ответов теста
 @login_required
 def survey_results_view(request, survey_id):
     responses = Response.objects.filter(survey_id=survey_id).prefetch_related('answers__question')
@@ -168,6 +164,8 @@ def survey_results_view(request, survey_id):
         'statistics': statistics,
     })
 
+
+# Таблица результатов
 @login_required
 def survey_responses_table(request, survey_id):
     survey = Survey.objects.get(id=survey_id)
@@ -223,6 +221,7 @@ def survey_responses_table(request, survey_id):
         'table_data': table_data,
     })
 
+# Редактирование вопроса
 @login_required
 def edit_question_view(request, question_id):
     question = get_object_or_404(Question, id=question_id)
@@ -265,6 +264,7 @@ def edit_question_view(request, question_id):
         'question': question,
     })
 
+# Редактирование опросника (пока не нужно)
 @login_required
 def edit_survey_view(request, survey_id):
     survey = get_object_or_404(Survey, id=survey_id)
@@ -287,3 +287,51 @@ def custom_404(request, exception):
     return render(request, '404.html', status=404)
 
 handler404 = custom_404
+
+
+def select_employee_view(request):
+    station_id = 1  # Возможно, этот ID станции будет динамическим
+    org_units = []
+    surveys = Survey.objects.all()
+
+    # Подгрузка подразделений для станции
+    try:
+        url = f"http://127.0.0.1:8000/api/employees/org-units/{station_id}/"
+        response = requests.get(url)
+        response.raise_for_status()
+        org_units = response.json()
+    except requests.RequestException as e:
+        print(f"Failed to fetch organizational units: {e}")
+
+    if request.method == 'POST':
+        survey_id = request.POST.get('survey_id')
+        employee_name = request.POST.get('employee_name')
+        print("EMPLOYEE NAME",employee_name)
+        # Проверка, что выбраны все необходимые данные
+        if not survey_id or not employee_name:
+            return render(request, 'select_employee.html', {
+                'org_units': org_units,
+                'surveys': surveys,
+                'error': "Пожалуйста, выберите тест и сотрудника."
+            })
+
+        # Сохраняем данные в сессии
+        request.session['employee_name'] = employee_name
+        return redirect('survey:survey', survey_id=survey_id)
+
+    return render(request, 'select_employee.html', {
+        'org_units': org_units,
+        'surveys': surveys
+    })
+
+def employees_by_orgunit_view(request):
+    department_id = request.GET.get("org_unit")
+    employees = []
+
+    if department_id:
+        url = f"http://127.0.0.1:8000/api/employees/by-department/{department_id}/"
+        response = requests.get(url)
+        employees = response.json()
+
+    # Отправляем HTML с выбором сотрудников, чтобы HTMX мог его вставить
+    return render(request, "_employee_select.html", {"employees": employees})

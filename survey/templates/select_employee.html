@@ -1,0 +1,45 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Выбор теста и сотрудника</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
+</head>
+<body>
+    <h1>Перед началом теста</h1>
+    <form method="post" action="{% url 'survey:select-employee' %}">
+        {% csrf_token %}
+        
+        <!-- Шаг 1: Выбор теста -->
+        <label for="survey-select">Тест:</label>
+        <select id="survey-select" name="survey_id" required>
+            <option value="">-- Выберите тест --</option>
+            {% for s in surveys %}
+                <option value="{{ s.id }}">{{ s.title }}</option>
+            {% endfor %}
+        </select>
+
+        <!-- Шаг 2: Выбор отдела -->
+        <label for="org-unit-select">Отдел:</label>
+        <select 
+            id="org-unit-select" 
+            name="org_unit"
+            hx-get="{% url 'survey:employees-by-orgunit' %}" 
+            hx-target="#employee-select-container"
+            hx-trigger="change"
+            hx-include="[name=org_unit]"
+            required>
+            <option value="">-- Выберите отдел --</option>
+            {% for unit in org_units %}
+                <option value="{{ unit.id }}">{{ unit.name }}</option>
+            {% endfor %}
+        </select>
+
+        <!-- Шаг 3: Выбор сотрудника -->
+        <div id="employee-select-container">
+            <!-- сюда HTMX подгрузит сотрудников -->
+        </div>
+
+        <button type="submit">Начать тест</button>
+    </form>
+</body>
+</html>
