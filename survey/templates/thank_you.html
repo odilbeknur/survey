@@ -12,7 +12,7 @@
     <link type="text/css" href="{% static 'style.css' %}" rel="stylesheet">
 </head>
 <body>
-    <div class="container" id="thanks" >
+    <div class="container" id="thanks">
         <strong><h1 style="color:rgb(0, 0, 0);">Спасибо за участие в опросе!</h1></strong>
         
         {% if messages %}
@@ -21,6 +21,23 @@
                     <p style="color:rgb(168, 13, 13);">{{ message }}</p>
                 {% endfor %}
             </div>
+        {% endif %}
+
+        <!-- Отображаем оценку -->
+        {% if request.session.score %}
+            <div>
+                <p><strong>Ваша оценка:</strong> {{ request.session.score }}</p>
+                <!-- Можно добавить дополнительное сообщение в зависимости от оценки -->
+                {% if request.session.score >= 80 %}
+                    <p>Отличный результат! Спасибо за подробные ответы.</p>
+                {% elif request.session.score >= 50 %}
+                    <p>Хорошо, но есть моменты, над которыми стоит поработать.</p>
+                {% else %}
+                    <p>Не расстраивайтесь, в следующий раз получится лучше!</p>
+                {% endif %}
+            </div>
+        {% else %}
+            <p>Оценка не доступна.</p>
         {% endif %}
     </div>
 </body>
