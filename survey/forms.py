@@ -64,7 +64,6 @@ class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
         fields = [
-            'survey',
             'text',
             'question_type',
             'required',

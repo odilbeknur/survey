@@ -14,7 +14,7 @@ class Survey(models.Model):
         return self.title
 
     def get_absolute_url(self):
-        return reverse('survey:surveys', args=[self.id])
+        return reverse('survey:survey', args=[self.id])
 
     def get_results_url(self):
         return reverse('survey:survey_results', args=[self.id])
@@ -73,25 +73,32 @@ class Response(models.Model):
     def evaluate(self):
         total_questions = self.survey.questions.count()
         correct_answers = 0
-        
+
         for question in self.survey.questions.all():
             answers = self.answers.filter(question=question)
-            print('Ответы', answers)
+            print(f'\n[Вопрос #{question.id}] {question.text}')
+            print(f'Тип вопроса: {question.question_type}')
+            print(f'Ответы: {answers}')
+
+            is_correct = False  # По умолчанию считаем, что ответ неправильный
+
             if question.question_type == 'checkbox':
                 selected_texts = set(
-                    answers.filter(question=question, choice__isnull=True)
-                        .values_list('text_answer', flat=True)
+                    answers.filter(choice__isnull=True).values_list('text_answer', flat=True)
                 )
                 correct_texts = set(
-                    question.choices.filter(is_correct=True)
-                                    .values_list('text', flat=True)
+                    question.choices.filter(is_correct=True).values_list('text', flat=True)
                 )
+                print(f'Выбранные тексты: {selected_texts}')
+                print(f'Правильные тексты: {correct_texts}')
                 if selected_texts == correct_texts:
-                    correct_answers += 1
+                    is_correct = True
 
             elif question.question_type in ['radio', 'select']:
                 if answers.exists() and answers.first().choice and answers.first().choice.is_correct:
-                    correct_answers += 1
+                    is_correct = True
+                else:
+                    print(f"Выбранный вариант: {answers.first().choice if answers.exists() else 'нет'}")
 
             elif question.question_type in ['text', 'textarea']:
                 if answers.exists():
@@ -100,16 +107,22 @@ class Response(models.Model):
                     if not question.case_sensitive:
                         given = given.lower()
                         expected = expected.lower()
+                    print(f"Ожидалось: '{expected.strip()}', получено: '{given.strip()}'")
                     if given.strip() == expected.strip():
-                        correct_answers += 1
+                        is_correct = True
 
             elif question.question_type == 'combo':
-                # Примерная логика: выбран правильный вариант и при необходимости добавлен текст
                 if answers.exists():
                     answer = answers.first()
+                    print(f"Выбран: {answer.choice}, комментарий: {answer.text_answer}")
                     if answer.choice and answer.choice.is_correct:
                         if not answer.choice.requires_comment or (answer.text_answer and answer.text_answer.strip()):
-                            correct_answers += 1
+                            is_correct = True
+
+            if is_correct:
+                correct_answers += 1
+            else:
+                print("❌ Ответ считается неправильным.")
 
         if total_questions > 0:
             self.score = round((correct_answers / total_questions) * 100, 2)
@@ -117,7 +130,9 @@ class Response(models.Model):
             self.score = 0
 
         self.passed = self.score >= 70
+        print(f'\nИтоговый результат: {self.score}% — {"пройдено" if self.passed else "не пройдено"}')
         self.save()
+
 
 
 class Answer(models.Model):

@@ -1,16 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Редактировать опрос</title>
 </head>
 <body>
     <h1>Редактировать опрос: {{ survey.title }}</h1>
+
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <button type="submit">Сохранить изменения</button>
     </form>
+
+    <hr>
+
+    <h2>Вопросы</h2>
+    <ul>
+        {% for question in questions %}
+            <li>
+                {{ question.text }}
+                [<a href="{% url 'survey:edit_question' question.id %}">Редактировать</a>]
+                [<a href="{% url 'survey:delete_question' question.id %}">Удалить</a>] <!-- Добавьте URL для удаления -->
+            </li>
+        {% empty %}
+            <li>Вопросов пока нет.</li>
+        {% endfor %}
+    </ul>
+
+    <p><a href="{% url 'survey:add_question' survey_id=survey.id %}">Добавить новый вопрос</a></p>
 </body>
 </html>

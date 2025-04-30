@@ -20,13 +20,24 @@
             const container = document.getElementById('choices-container');
 
             // Создаем поле ввода для нового варианта
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.name = `choice_${choiceCount}`;
-            input.placeholder = `Choice ${choiceCount + 1}`;
+            const choiceInput = document.createElement('input');
+            choiceInput.type = 'text';
+            choiceInput.name = `choice_${choiceCount}`;
+            choiceInput.placeholder = `Choice ${choiceCount + 1}`;
 
-            // Добавляем поле в контейнер
-            container.appendChild(input);
+            // Создаем флажок для выбора правильного ответа
+            const isCorrectInput = document.createElement('input');
+            isCorrectInput.type = 'checkbox';
+            isCorrectInput.name = `is_correct_${choiceCount}`;
+
+            // Создаем контейнер для варианта и флажка
+            const choiceContainer = document.createElement('div');
+            choiceContainer.appendChild(choiceInput);
+            choiceContainer.appendChild(isCorrectInput);
+            choiceContainer.appendChild(document.createTextNode(' Correct?'));  // Текст рядом с флажком
+
+            // Добавляем вариант в контейнер
+            container.appendChild(choiceContainer);
 
             // Увеличиваем счетчик вариантов
             choiceCount++;

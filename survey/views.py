@@ -19,6 +19,7 @@ import requests
 def survey_list_view(request):
     surveys = Survey.objects.all()  
     questions  = Question.objects.all()  
+    print("SURVEYS", surveys)
     return render(request, 'survey_list.html', {'surveys': surveys, 'questions': questions})
 
 
@@ -30,7 +31,6 @@ def survey_view(request, survey_id):
     has_errors = False
 
     if request.method == 'POST':
-        print("Form submitted.")  # Добавляем лог, чтобы увидеть, когда форма отправляется
         for question in survey.questions.all():
             answer_data = request.POST.get(f'question_{question.id}')
             try:
@@ -116,29 +116,44 @@ def thank_you_view(request):
 
 # Добавление вопросов
 @login_required
-def add_question_view(request):
+def add_question_view(request, survey_id):
+    survey = get_object_or_404(Survey, id=survey_id)  # Получаем объект опроса по ID
     if request.method == 'POST':
         question_form = QuestionForm(request.POST)
         if question_form.is_valid():
-            question = question_form.save()  # Сохраняем вопрос
-            
+            question = question_form.save(commit=False)  # Не сохраняем сразу, так как нужно указать survey
+            question.survey = survey  # Привязываем вопрос к опросу
+            question.save()  # Сохраняем вопрос
+
             # Добавляем варианты ответа
             for i in range(int(request.POST.get('choice_count', 0))):
                 choice_text = request.POST.get(f'choice_{i}')
+                is_correct = request.POST.get(f'is_correct_{i}')  # Проверяем, был ли флажок установлен
+
                 if choice_text:
-                    Choice.objects.create(question=question, text=choice_text)
-            
+                    choice = Choice.objects.create(question=question, text=choice_text)
+                    if is_correct:
+                        choice.is_correct = True  # Отмечаем, что этот вариант правильный
+                        choice.save()
+
             # Обрабатываем комбинированный вопрос
             if question.question_type == 'combo':  # Если это комбинированный вопрос
-                Choice.objects.create(question=question, text='Да')  # Добавляем "Да"
+                Choice.objects.create(question=question, text='Да', is_correct=True)  # Добавляем "Да"
                 Choice.objects.create(question=question, text='Нет')  # Добавляем "Нет"
             
-            return redirect('survey:survey_list')  # Перенаправляем на список опросов
+            # Перенаправляем на страницу редактирования опроса
+            return redirect('survey:edit_survey', survey_id=survey.id)  # Перенаправляем на редактирование опроса
     else:
         question_form = QuestionForm()
 
-    return render(request, 'add_question.html', {'question_form': question_form})
+    return render(request, 'add_question.html', {'question_form': question_form, 'survey_id': survey.id})
 
+@login_required
+def delete_question_view(request, question_id):
+    question = get_object_or_404(Question, id=question_id)
+    survey_id = question.survey.id  # Запомним ID опроса перед удалением
+    question.delete()
+    return redirect('survey:edit_survey', survey_id=survey_id)
 
 # Отображение результатов и ответов теста
 @login_required
@@ -269,18 +284,31 @@ def edit_question_view(request, question_id):
 def edit_survey_view(request, survey_id):
     survey = get_object_or_404(Survey, id=survey_id)
 
-    if request.method == 'POST':
+    if request.method == 'POST':    
         form = SurveyForm(request.POST, survey=survey)
         if form.is_valid():
-            # Здесь можно добавить обработку результатов, если нужно
-            return redirect('survey:survey_list')  # Или на другую страницу, если нужно
+            # Пробежимся по всем вопросам и обновим их ответы
+            for question in survey.questions.all():
+                field_name = f'question_{question.id}'
+                if field_name in form.cleaned_data:
+                    answer = form.cleaned_data[field_name]
+                    # Обновляем или сохраняем ответ для каждого вопроса
+                    # Для этого создайте модель Response или аналогичную
+                    # Пример:
+                    # Response.objects.update_or_create(survey=survey, question=question, defaults={'answer': answer})
+            return redirect('survey:edit_survey', survey_id=survey.id)
     else:
         form = SurveyForm(survey=survey)
+
+    questions = survey.questions.all()  # или use .question_set.all() если у вас foreign key
 
     return render(request, 'edit_survey.html', {
         'form': form,
         'survey': survey,
+        'questions': questions,
     })
+
+
 
 
 def custom_404(request, exception):
