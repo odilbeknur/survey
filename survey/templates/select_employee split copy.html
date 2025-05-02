@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<main class="main" id="top">
+  <div class="row vh-100 g-0">
+    <div class="col-lg-12 position-relative">
+      <div class="assessment-platform-header d-flex align-items-center justify-content-center">
+        <div class="bg-holder bg-assessment-overlay">
+          <video class="bg-video" autoplay loop muted playsinline>
+            <source src="{% static 'assets/video/travel.mp4' %}" type="video/mp4" />
+          </video>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="container position-relative z-index-2 text-center px-4">
+          <div class="mb-5 animate__animated animate__fadeIn">
+            <h2 class="text-white fs-2 mb-3">Система оценки профессиональных компетенций</h2>
+            <h1 class="display-5 text-white fw-bold mb-4">Центр сертификации СНТБ</h1>
+            
+            <div class="d-flex justify-content-center mb-5">
+              <div class="pe-4 border-end border-white">
+                <div class="fs-2 fw-bold text-primary">{{ survey_count|default:"20" }}+</div>
+                <div class="text-white">тестовых модулей</div>
+              </div>
+              <div class="px-4 border-end border-white">
+                <div class="fs-2 fw-bold text-primary">{{ employee_count|default:"300" }}+</div>
+                <div class="text-white">специалистов</div>
+              </div>
+              <div class="ps-4">
+                <div class="fs-2 fw-bold text-primary">{{ org_unit_count|default:"15" }}+</div>
+                <div class="text-white">подразделений</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assessment Selection Form -->
+          <div class="animate__animated animate__fadeInUp">
+            <form method="post" action="{% url 'survey:select-employee' %}" class="assessment-form">
+              {% csrf_token %}
+              <div class="row gx-2 gy-3 gy-md-0 align-items-center mx-auto p-3 bg-dark bg-opacity-50 rounded-3 border border-light border-opacity-25 backdrop-blur">
+                
+                <!-- Test Module Selection -->
+                <div class="col-md-4">
+                  <div class="input-group">
+                    <span class="input-group-text bg-dark border-light text-white">
+                      <i class="fas fa-clipboard-check"></i>
+                    </span>
+                    <select class="form-select border-start-0 ps-1" id="survey-select" name="survey_id" required>
+                      <option value="" selected disabled>Выберите тестовый модуль</option>
+                      {% for s in surveys %}
+                        <option value="{{ s.id }}">{{ s.title }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                
+                <!-- Department Selection -->
+                <div class="col-md-3">
+                  <div class="input-group">
+                    <span class="input-group-text bg-dark border-light text-white">
+                      <i class="fas fa-sitemap"></i>
+                    </span>
+                    <select class="form-select border-start-0 ps-1" 
+                      id="org-unit-select" 
+                      name="org_unit"
+                      hx-get="{% url 'survey:employees-by-orgunit' %}" 
+                      hx-target="#employee-select-container"
+                      hx-trigger="change"
+                      required>
+                      <option value="" selected disabled>Выберите подразделение</option>
+                      {% for unit in org_units %}
+                        <option value="{{ unit.id }}">{{ unit.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                
+                <!-- Employee Selection -->
+                <div class="col-md-3">
+                  <div id="employee-select-container">
+                    <div class="input-group">
+                      <span class="input-group-text bg-dark border-light text-white">
+                        <i class="fas fa-user-tie"></i>
+                      </span>
+                      <select class="form-select border-start-0 ps-1" disabled>
+                        <option selected>Сначала выберите подразделение</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Start Button -->
+                <div class="col-md-2">
+                  <button class="btn btn-primary w-100 py-2 fw-bold">
+                    <i class="fas fa-play-circle me-2"></i>Начать
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+          
+          <!-- Additional Information -->
+          <div class="mt-4 text-white animate__animated animate__fadeIn animate__delay-1s">
+            <p class="lead mb-1">Система аттестации персонала СНТБ</p>
+            <p class="small opacity-75">Выберите тестовый модуль, подразделение и сотрудника для проведения оценки</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<style>
+  .bg-assessment-overlay {
+    position: relative;
+  }
+  .bg-assessment-overlay::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(0,40,80,0.85) 0%, rgba(0,20,40,0.9) 100%);
+  }
+  .assessment-platform-header {
+    min-height: 100vh;
+    width: 100%;
+  }
+  .z-index-2 {
+    z-index: 2;
+  }
+  .backdrop-blur {
+    backdrop-filter: blur(8px);
+  }
+  .assessment-form .form-select {
+    background-color: rgba(255,255,255,0.9);
+    border: 1px solid #dee2e6;
+    border-left: 0 !important;
+  }
+  .assessment-form .input-group-text {
+    border-right: 0;
+  }
+  .assessment-form select:disabled {
+    background-color: #e9ecef;
+  }
+</style>
+{% endblock %}

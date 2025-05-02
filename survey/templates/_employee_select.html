@@ -1,5 +1,7 @@
-<label for="employee-select">Сотрудник:</label>
-<select id="employee-select" name="employee">
+<label for="employee-select-field" class="form-label text-white fw-medium mb-2">
+  <i class="fas fa-user-tie me-2"></i>Сотрудник
+</label>
+<select class="form-select form-select-lg" id="employee-select" name="employee">
   <option value="">-- Выберите сотрудника --</option>
   {% for emp in employees %}
     <option value="{{ emp.id }}">{{ emp.first_name }} {{ emp.last_name }} {{ emp.father_name }}</option>

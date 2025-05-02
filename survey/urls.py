@@ -19,7 +19,7 @@ urlpatterns = [
     
     path('survey/<int:survey_id>/edit/', views.edit_survey_view, name='edit_survey'),
 
-    path("select-employee/", views.select_employee_view, name="select-employee"),
+    path("", views.select_employee_view, name="select-employee"),
     path("get-employees/", views.employees_by_orgunit_view, name="employees-by-orgunit"),
 
 

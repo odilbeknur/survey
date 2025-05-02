@@ -1,45 +1,196 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Выбор теста и сотрудника</title>
-    <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система оценки компетенций | СПП</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <style>
+        :root {
+            --spp-primary: #005baa;
+            --spp-secondary: #ffc107;
+            --spp-dark: #1a2e47;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            object-fit: cover;
+            opacity: 0.4;
+        }
+        
+        .main-overlay {
+            background: linear-gradient(135deg, rgba(0,91,170,0.9) 0%, rgba(26,46,71,0.95) 100%);
+        }
+        
+        .assessment-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .form-control-lg, .form-select-lg {
+            padding: 1rem 1.5rem;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ced4da;
+        }
+        
+        .form-control-lg:focus, .form-select-lg:focus {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 0 0 0.25rem rgba(0, 91, 170, 0.25);
+        }
+        
+        .btn-spp-primary {
+            background-color: var(--spp-primary);
+            border-color: var(--spp-primary);
+            color: white;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-spp-primary:hover {
+            background-color: #004a8c;
+            border-color: #004a8c;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 91, 170, 0.4);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--spp-secondary);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .disabled-select {
+            background-color: #e9ecef !important;
+            color: #6c757d !important;
+            cursor: not-allowed;
+        }
+        
+        @media (max-width: 768px) {
+            .stat-number {
+                font-size: 2rem;
+            }
+            
+            .assessment-card {
+                padding: 1.5rem !important;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Перед началом теста</h1>
-    <form method="post" action="{% url 'survey:select-employee' %}">
-        {% csrf_token %}
-        
-        <!-- Шаг 1: Выбор теста -->
-        <label for="survey-select">Тест:</label>
-        <select id="survey-select" name="survey_id" required>
-            <option value="">-- Выберите тест --</option>
-            {% for s in surveys %}
-                <option value="{{ s.id }}">{{ s.title }}</option>
-            {% endfor %}
-        </select>
+    <!-- Video Background -->
+    <video class="video-background" autoplay loop muted playsinline>
+        <source src="{% static 'assets/video/travel.mp4' %}" type="video/mp4">
+        Ваш браузер не поддерживает видео.
+    </video>
 
-        <!-- Шаг 2: Выбор отдела -->
-        <label for="org-unit-select">Отдел:</label>
-        <select 
-            id="org-unit-select" 
-            name="org_unit"
-            hx-get="{% url 'survey:employees-by-orgunit' %}" 
-            hx-target="#employee-select-container"
-            hx-trigger="change"
-            hx-include="[name=org_unit]"
-            required>
-            <option value="">-- Выберите отдел --</option>
-            {% for unit in org_units %}
-                <option value="{{ unit.id }}">{{ unit.name }}</option>
-            {% endfor %}
-        </select>
+    <!-- Main Content -->
+    <div class="main-overlay min-vh-100 d-flex flex-column justify-content-center py-5">
+        <div class="container my-auto">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 col-xl-8">
+                    <!-- Header Section -->
+                    <div class="text-center mb-5 animate__animated animate__fadeIn">
+                        <h1 class="display-4 fw-bold text-white mb-3">Система оценки профессиональных компетенций</h1>
+                    </div>
 
-        <!-- Шаг 3: Выбор сотрудника -->
-        <div id="employee-select-container">
-            <!-- сюда HTMX подгрузит сотрудников -->
+                    <!-- Assessment Form Card -->
+                    <div class="assessment-card p-4 p-md-5 animate__animated animate__fadeInUp">
+                        <div class="text-center mb-4">
+                            <h2 class="h1 text-warning fw-bold mb-3">Техника безопасности</h2>
+                            <p class="text-light mb-0">Пройдите тестирование для подтверждения квалификации</p>
+                        </div>
+                        
+                        <form method="post" action="{% url 'survey:select-employee' %}" id="assessment-form">
+                            {% csrf_token %}
+                            
+                            <!-- Test Selection -->
+                            <div class="mb-4">
+                                <label for="survey-select" class="form-label text-white fw-medium mb-2">
+                                    <i class="fas fa-clipboard-list me-2"></i>Тестовый модуль
+                                </label>
+                                <select class="form-select form-select-lg" id="survey-select" name="survey_id" required>
+                                    <option value="" selected disabled>Выберите тест из списка...</option>
+                                    {% for s in surveys %}
+                                        <option value="{{ s.id }}">{{ s.title }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="invalid-feedback">Пожалуйста, выберите тестовый модуль</div>
+                            </div>
+                            
+                            <!-- Department Selection -->
+                            <div class="mb-4">
+                                <label for="org-unit-select" class="form-label text-white fw-medium mb-2">
+                                    <i class="fas fa-sitemap me-2"></i>Отдел
+                                </label>
+                                <select class="form-select form-select-lg" id="org-unit-select" name="org_unit" 
+                                        id="org-unit-select" 
+                                        name="org_unit"        
+                                        hx-get="{% url 'survey:employees-by-orgunit' %}" 
+                                        hx-target="#employee-select-container"
+                                        hx-trigger="change"
+                                        required>
+                                    <option value="" selected disabled>Выберите подразделение...</option>
+                                    {% for unit in org_units %}
+                                        <option value="{{ unit.id }}">{{ unit.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="invalid-feedback">Пожалуйста, выберите подразделение</div>
+                            </div>
+                                
+                            <!-- Employee Selection -->
+                            <div class="mb-4" id="employee-select-container">
+                                <label for="employee-select-field" class="form-label text-white fw-medium mb-2">
+                                    <i class="fas fa-user-tie me-2"></i>Сотрудник
+                                </label>
+                                <select class="form-select form-select-lg disabled-select" id="employee-select-field" name="employee_id" disabled required>
+                                    <option value="" selected>Сначала выберите подразделение</option>
+                                </select>
+                                <div class="invalid-feedback">Пожалуйста, выберите сотрудника</div>
+                            </div>
+                            
+                            <!-- Submit Button -->
+                            <div class="text-center mt-5">
+                                <button type="submit" class="btn btn-spp-primary btn-lg px-5 py-3 fw-bold fs-4" id="submit-btn">
+                                    <i class="fas fa-play-circle me-2"></i>Начать тестирование
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <button type="submit">Начать тест</button>
-    </form>
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+   
 </body>
 </html>
+{% endblock %}

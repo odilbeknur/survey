@@ -1,41 +1,22 @@
+{% extends 'base.html' %}
 {% load static %}
 {% load custom_filters %}
 
+{% block content %}
 <style>
-    /* Основные стили */
-    body {
-        display: flex;
-        background-color: #f5f5f5;
-    }
-
-    .container {
-        display: flex;
-        justify-content: space-between;
-        width: 80%;
-        margin: 20px auto;
-    }
-
     .questions-container {
         width: 70%;
-    }
-
-    .sidebar {
-        width: 25%;
         background-color: #ffffff;
-        padding: 15px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        height: 90vh;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     .question-numbers {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 12px;
+        margin-bottom: 20px;
     }
 
     .question-number {
@@ -44,188 +25,640 @@
         cursor: pointer;
         border-radius: 50%;
         text-align: center;
-        width: 40px;
-        height: 40px;
-        border: 2px solid #ccc;
-        background-color: #f0f0f0;
-        color: #333;
+        width: 42px;
+        height: 42px;
+        border: 2px solid #e0e0e0;
+        background-color: #f8f9fa;
+        color: #495057;
         font-weight: bold;
-        transition: background-color 0.3s, color 0.3s;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
     }
 
     .question-number.active {
-        border: 2px solid blue;  /* Синий бордер для активного вопроса */
-        background-color: #e6f7ff; /* Светлый голубой фон для активного вопроса */
-        color: blue; /* Синий цвет текста */
+        border: 2px solid #4361ee;
+        background-color: #4361ee;
+        color: white;
+        transform: scale(1.05);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
     }
 
     .question-number.unanswered {
-        background-color: white;
-        color: black;
+        background-color: #f8f9fa;
+        color: #6c757d;
+        border: 2px solid #dee2e6;
     }
 
     .question-number.answered {
-        background-color: blue;
+        background-color: #4cc9f0;
         color: white;
+        border: 2px solid #3a86ff;
     }
 
-    .question-number:hover {
-        background-color: #ddd;
+    .question-number:hover:not(.active) {
+        background-color: #e9ecef;
+        transform: scale(1.03);
     }
 
     .question {
-        margin-bottom: 20px;
+        margin-bottom: 30px;
         display: none;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #4361ee;
     }
 
     .question.active {
         display: block;
+        animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     .form-group {
-        margin-bottom: 10px;
-    }
-
-    .submit-btn {
-        background-color: #4CAF50;
-        color: white;
-        padding: 10px 20px;
-        border: none;
+        margin-bottom: 15px;
+        padding: 12px;
+        background-color: white;
+        border-radius: 6px;
+        transition: all 0.2s ease;
         cursor: pointer;
+        position: relative;
+        border: 2px solid #e9ecef;
+    }
+
+    .form-group:hover {
+        background-color: #f1f3ff;
+        transform: translateX(3px);
+    }
+
+    /* Стили для выделенного ответа */
+    .form-group.selected {
+        background-color: #e6f7ff;
+        border-color: #4cc9f0;
+        box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.3);
+    }
+
+    /* Для радиокнопок - только один выделенный */
+    input[type="radio"]:checked ~ .form-group {
+        background-color: #e6f7ff;
+        border-color: #4cc9f0;
+    }
+
+    /* Для чекбоксов - множественное выделение */
+    input[type="checkbox"]:checked ~ .form-group {
+        background-color: #e6f7ff;
+        border-color: #4cc9f0;
+    }
+
+    /* Стили для кастомных чекбоксов/радиокнопок */
+    .form-check-input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        margin: 0;
+        cursor: pointer;
+        z-index: 1;
+    }
+
+    .form-check-label {
+        position: relative;
+        padding-left: 28px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .form-check-label:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 2px;
+        width: 18px;
+        height: 18px;
+        border: 2px solid #ced4da;
+        border-radius: 3px;
+        background: white;
+    }
+
+    input[type="radio"] + .form-check-label:before {
+        border-radius: 50%;
+    }
+
+    .form-check-input:checked + .form-check-label:before {
+        background-color: #4361ee;
+        border-color: #4361ee;
+    }
+
+    input[type="checkbox"]:checked + .form-check-label:after {
+        content: "";
+        position: absolute;
+        left: 6px;
+        top: 8px;
+        width: 5px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+
+    input[type="radio"]:checked + .form-check-label:after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        top: 7px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: white;
+    }
+
+    /* Улучшенный таймер */
+    .timer-container {
+        background: linear-gradient(135deg, #3a0ca3 0%, #4361ee 100%);
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .timer-text {
         font-size: 16px;
+        margin-bottom: 8px;
+        opacity: 0.9;
     }
 
-    .submit-btn:disabled {
-        background-color: #ccc;
-        cursor: not-allowed;
+    .timer-display {
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: 1px;
     }
 
-    .submit-btn:hover:not(:disabled) {
-        background-color: #45a049;
-    }
-
+    /* Остальные стили */
     .questions-nav {
-        margin-top: 20px;
+        margin-top: 30px;
         display: flex;
         justify-content: space-between;
+    }
+
+    .btn-nav {
+        padding: 10px 25px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-nav:hover {
+        transform: translateY(-2px);
     }
 
     .choices-container {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
+    }
+
+    .survey-title-container {
+        background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .survey-title {
+        color: #ffffff;
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.3;
+    }
+    
+    .survey-subtitle {
+        font-size: 16px;
+        opacity: 0.9;
+        margin-top: 8px;
+    }
+    
+    .progress-container {
+        margin-bottom: 25px;
+        background-color: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .progress-title {
+        font-weight: 600;
+        color: #4361ee;
+        font-size: 16px;
+    }
+    
+    .progress-count {
+        font-weight: 700;
+        color: #212529;
+    }
+    
+    .progress-bar {
+        height: 10px;
+        border-radius: 5px;
+        background-color: #f1f3ff;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4361ee 0%, #4cc9f0 100%);
+        border-radius: 5px;
+        transition: width 0.5s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .progress-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, 
+                      rgba(255,255,255,0.1) 0%, 
+                      rgba(255,255,255,0.3) 50%, 
+                      rgba(255,255,255,0.1) 100%);
+        animation: progressShine 2s infinite;
+    }
+    
+    @keyframes progressShine {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+    
+    .completion-instructions {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        border-left: 4px solid #4cc9f0;
+    }
+    
+    .instructions-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #4361ee;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .instructions-title i {
+        margin-right: 8px;
+    }
+    
+    .instructions-list {
+        padding-left: 20px;
+        margin-bottom: 0;
+        font-size: 14px;
+    }
+    
+    .instructions-list li {
+        margin-bottom: 6px;
+        color: #495057;
+    }
+
+    .submit-btn-container {
+        width: 100%;
+        background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: none;
+        font-weight: 600;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .submit-btn-container:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .submit-btn-container:disabled {
+        background: #e9ecef;
+        cursor: not-allowed;
+        color: #adb5bd;
+    }
+
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    .error {
+        color: #d90429;
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #fff5f5;
+        border-radius: 6px;
+        border-left: 4px solid #d90429;
+    }
+
+    select.form-control {
+        padding: 10px 15px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+
+    select.form-control:focus {
+        border-color: #4361ee;
+        box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+    }
+
+    .question-text {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #212529;
+        line-height: 1.4;
+    }
+
+    .survey-instructions {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        border-left: 4px solid #4361ee;
+    }
+
+    .instructions-title-main {
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #4361ee;
+    }
+
+    .instructions-list-main {
+        padding-left: 20px;
+        margin-bottom: 0;
+    }
+
+    .instructions-list-main li {
+        margin-bottom: 8px;
     }
 </style>
 
-<div class="container">
-    <!-- Вопросы и форма -->
-    <div class="questions-container">
-        <h1>{{ survey.title }}</h1>
-        <p style="color:white;">({{ survey.description }})</p>
+<section class="pt-6 pb-9">
+    <div class="container-medium">
+        <!-- Обновлённый заголовок теста -->
+        <div class="survey-title-container">
+            <h1 class="survey-title">{{ survey.title }}</h1>
+            <div class="survey-subtitle">Пожалуйста, ответьте на все вопросы для завершения теста</div>
+        </div>
+        
+        <!-- Улучшенная шкала прогресса -->
+        <div class="progress-container">
+            <div class="progress-header">
+                <div class="progress-title">Ваш прогресс</div>
+                <div class="progress-count" id="progress-count">0/{{ survey.questions.count }}</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
 
-        <form method="post" id="survey-form">
-            {% csrf_token %}
+        <div class="row justify-content-between">
+            <div class="col-lg-7 col-xl-7">
+                <form method="post" id="survey-form">
+                    {% csrf_token %}
+                    
+                    {% for question in survey.questions.all %}
+                    <div class="question fs-6" id="question-{{ question.id }}" data-question-type="{{ question.question_type }}">
+                        <p class="question-text">{{ forloop.counter }}. {{ question.text }}{% if question.is_required %} <span class="text-danger">*</span>{% endif %}</p>
 
-            {% for question in survey.questions.all %}
-            <div class="question" id="question-{{ question.id }}" data-question-type="{{ question.question_type }}">
-                <p><strong>{{ forloop.counter }} : {{ question.text }}</strong></p>
+                        {% if errors and errors|get_item:question.id %}
+                        <div class="error">{{ errors|get_item:question.id }}</div>
+                        {% endif %}
 
-                {% if errors and errors|get_item:question.id %}
-                <div class="error" style="color:red; font-weight: 600;">{{ errors|get_item:question.id }}</div>
-                {% endif %}
-
-                <!-- Вопросы с вариантами (radio, checkbox, select) -->
-                <div class="choices-container">
-                    {% if question.question_type == 'checkbox' %}
-                        {% for choice in question.choices.all %}
-                        <div class="form-group">
-                            <input type="checkbox" id="choice_{{ question.id }}_{{ choice.id }}" 
-                                   name="question_{{ question.id }}" value="{{ choice.id }}" 
-                                   class="form-check-input" onchange="markAnswered({{ question.id }})">
-                            <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label">{{ choice.text }}</label>
+                        <div class="choices-container fs-7">
+                            {% if question.question_type == 'checkbox' %}
+                                {% for choice in question.choices.all %}
+                                <div class="form-group">
+                                    <input type="checkbox" id="choice_{{ question.id }}_{{ choice.id }}" 
+                                           name="question_{{ question.id }}" value="{{ choice.id }}" 
+                                           class="form-check-input" onchange="markAnswered({{ question.id }}, this)">
+                                    <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label fs-7">{{ choice.text }}</label>
+                                </div>
+                                {% endfor %}
+                            {% elif question.question_type == 'radio' %}
+                                {% for choice in question.choices.all %}
+                                <div class="form-group">
+                                    <input type="radio" id="choice_{{ question.id }}_{{ choice.id }}" 
+                                           name="question_{{ question.id }}" value="{{ choice.id }}" 
+                                           class="form-check-input" {% if question.is_required %}required{% endif %} 
+                                           onchange="markAnswered({{ question.id }}, this)">
+                                    <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label fs-7">{{ choice.text }}</label>
+                                </div>
+                                {% endfor %}
+                            {% elif question.question_type == 'select' %}
+                            <div class="form-group">
+                                <select name="question_{{ question.id }}" class="form-control" {% if question.is_required %}required{% endif %} onchange="markAnswered({{ question.id }}, this)">
+                                    <option disabled selected value>Выберите из списка</option>
+                                    {% for choice in question.choices.all %}
+                                    <option value="{{ choice.id }}">{{ choice.text }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endfor %}
-                    {% elif question.question_type == 'radio' %}
-                        {% for choice in question.choices.all %}
-                        <div class="form-group">
-                            <input type="radio" id="choice_{{ question.id }}_{{ choice.id }}" 
-                                   name="question_{{ question.id }}" value="{{ choice.id }}" 
-                                   class="form-check-input" required onchange="markAnswered({{ question.id }})">
-                            <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label">{{ choice.text }}</label>
-                        </div>
-                        {% endfor %}
-                    {% elif question.question_type == 'select' %}
-                    <div class="form-group">
-                        <select name="question_{{ question.id }}" class="form-control" required onchange="markAnswered({{ question.id }})">
-                            <option disabled selected value>Выберите из списка</option>
-                            {% for choice in question.choices.all %}
-                            <option value="{{ choice.id }}">{{ choice.text }}</option>
-                            {% endfor %}
-                        </select>
                     </div>
-                    {% endif %}
+                    {% endfor %}
+
+                    <div class="questions-nav">
+                        <button type="button" class="btn btn-primary btn-nav" id="prev-btn" onclick="goToPrevQuestion()" disabled>
+                            <i class="fas fa-arrow-left me-2"></i> Назад
+                        </button>
+                        <button type="button" class="btn btn-primary btn-nav" id="next-btn" onclick="goToNextQuestion()">
+                            Далее <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+            </div>
+            <div class="col-lg-5 col-xl-4">
+                <div class="card mt-5 mt-lg-0">
+                    <div class="card-body">
+                        <!-- Улучшенный таймер -->
+                        <div class="timer-container">
+                            <div class="timer-text">Оставшееся время</div>
+                            <div class="timer-display" id="timer">29:50</div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">Вопросы</h5>
+                                <div class="question-numbers">
+                                    {% for question in survey.questions.all %}
+                                    <div class="question-number unanswered" id="sidebar-question-{{ question.id }}" onclick="goToQuestion({{ question.id }})">
+                                        {{ forloop.counter }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Перенесённая инструкция перед кнопкой завершения -->
+                        <div class="completion-instructions">
+                            <div class="instructions-title">
+                                <i class="fas fa-info-circle"></i> &nbsp; Перед завершением
+                            </div>
+                            <ul class="instructions-list">
+                                <li>Проверьте, что ответили на все вопросы</li>
+                                <li>После нажатия кнопки изменения будут недоступны</li>
+                                <li>Результаты будут доступны сразу после завершением теста</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="submit" class="submit-btn-container" id="submit-btn" disabled>
+                                <span class="submit-btn-text">Завершить тест</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            {% endfor %}
-
-            <div class="questions-nav">
-                <button type="button" class="submit-btn" id="prev-btn" onclick="goToPrevQuestion()" disabled>Назад</button>
-                <button type="button" class="submit-btn" id="next-btn" onclick="goToNextQuestion()">Далее</button>
-                <button type="submit" class="submit-btn" id="submit-btn" disabled>Отправить</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Боковая панель с нумерацией вопросов -->
-    <div class="sidebar">
-        <h3>Вопросы</h3>
-        <div class="question-numbers">
-            {% for question in survey.questions.all %}
-            <div class="question-number unanswered" id="sidebar-question-{{ question.id }}" onclick="goToQuestion({{ question.id }})">
-                {{ forloop.counter }} <!-- Индекс вопроса -->
-            </div>
-            {% endfor %}
+            </form>
         </div>
     </div>
-</div>
+</section>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         // Установим первый вопрос в активное состояние при загрузке страницы
-        const firstQuestionNumber = document.querySelector('.question-number');
-        if (firstQuestionNumber) {
-            firstQuestionNumber.classList.add('active');
-        }
-
-        const firstQuestion = document.getElementById(`question-${firstQuestionNumber.textContent.trim()}`);
+        const firstQuestion = document.querySelector('.question');
         if (firstQuestion) {
             firstQuestion.classList.add('active');
+            const questionId = firstQuestion.id.split('-')[1];
+            document.getElementById(`sidebar-question-${questionId}`).classList.add('active');
         }
 
         updateNavigationButtons();
+        updateProgress();
+
+        // Инициализация таймера (примерная реализация)
+        initializeTimer(29 * 60 + 50); // 29 минут 50 секунд
+
+        // Обработчик кликов по вариантам ответов
+        document.querySelectorAll('.form-group').forEach(group => {
+            group.addEventListener('click', function(e) {
+                // Если кликнули не на сам инпут (он скрыт)
+                if (!e.target.classList.contains('form-check-input')) {
+                    const input = this.querySelector('input[type="checkbox"], input[type="radio"], select');
+                    if (input) {
+                        if (input.type === 'checkbox') {
+                            input.checked = !input.checked;
+                        } else if (input.type === 'radio' && !input.checked) {
+                            input.checked = true;
+                        } else if (input.tagName === 'SELECT') {
+                            input.focus();
+                        }
+                        // Триггерим событие change
+                        const event = new Event('change');
+                        input.dispatchEvent(event);
+                    }
+                }
+            });
+        });
     });
 
-    // Функция для перемешивания массива
-    function shuffleArray(arr) {
-        for (let i = arr.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [arr[i], arr[j]] = [arr[j], arr[i]]; 
-        }
+    function initializeTimer(totalSeconds) {
+        const timerElement = document.getElementById('timer');
+        let secondsLeft = totalSeconds;
+        
+        const timerInterval = setInterval(() => {
+            secondsLeft--;
+            
+            const minutes = Math.floor(secondsLeft / 60);
+            const seconds = secondsLeft % 60;
+            
+            timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Изменяем цвет при малом количестве времени
+            if (secondsLeft <= 60) {
+                timerElement.style.color = '#ff4d4f';
+                timerElement.style.fontWeight = '800';
+            }
+            
+            if (secondsLeft <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('survey-form').submit();
+            }
+        }, 1000);
     }
 
-    // Функция для перемешивания вариантов ответов
-    function shuffleChoices(questionId) {
-        const question = document.getElementById(`question-${questionId}`);
-        const choicesContainer = question.querySelector('.choices-container');
-        const choiceInputs = Array.from(choicesContainer.querySelectorAll('.form-group'));
-        shuffleArray(choiceInputs);
-        choiceInputs.forEach(input => choicesContainer.appendChild(input));
+    function updateProgress() {
+        const totalQuestions = document.querySelectorAll('.question').length;
+        const answeredCount = document.querySelectorAll('.question-number.answered').length;
+        const percentage = Math.round((answeredCount / totalQuestions) * 100);
+        
+        document.getElementById('progress-count').textContent = `${answeredCount} из ${totalQuestions} (${percentage}%)`;
+        document.getElementById('progress-fill').style.width = `${percentage}%`;
+        
+        // Добавляем класс при полном прохождении
+        const progressFill = document.getElementById('progress-fill');
+        if (percentage === 100) {
+            progressFill.classList.add('completed');
+        } else {
+            progressFill.classList.remove('completed');
+        }
     }
 
     let currentQuestionIndex = 0;
     let answeredQuestions = new Set();
 
-    function markAnswered(questionId) {
+    function markAnswered(questionId, element) {
+        // Подсветка выбранного ответа
+        if (element.type === 'radio') {
+            // Для радиокнопок снимаем выделение со всех вариантов
+            document.querySelectorAll(`input[name="${element.name}"]`).forEach(input => {
+                input.closest('.form-group').classList.remove('selected');
+            });
+            // Выделяем выбранный
+            element.closest('.form-group').classList.add('selected');
+        } 
+        else if (element.type === 'checkbox') {
+            // Для чекбоксов просто переключаем класс
+            element.closest('.form-group').classList.toggle('selected', element.checked);
+        }
+        else if (element.tagName === 'SELECT') {
+            // Для select выделяем весь блок
+            element.closest('.form-group').classList.toggle('selected', element.value !== '');
+        }
+
         const questionNumber = document.getElementById(`sidebar-question-${questionId}`);
         if (questionNumber) {
             questionNumber.classList.remove('unanswered');
@@ -233,6 +666,7 @@
         }
         answeredQuestions.add(questionId);
         checkAllAnswered();
+        updateProgress();
     }
 
     function checkAllAnswered() {
@@ -266,17 +700,28 @@
     function goToQuestion(questionId) {
         const questionElements = document.querySelectorAll('.question');
         questionElements.forEach(question => question.classList.remove('active'));
-        document.getElementById(`question-${questionId}`).classList.add('active');
-        currentQuestionIndex = Array.from(questionElements).findIndex(question => question.id === `question-${questionId}`);
-        updateSidebar();
-        updateNavigationButtons();
+        
+        const targetQuestion = document.getElementById(`question-${questionId}`);
+        if (targetQuestion) {
+            targetQuestion.classList.add('active');
+            currentQuestionIndex = Array.from(questionElements).findIndex(question => question.id === `question-${questionId}`);
+            updateSidebar();
+            updateNavigationButtons();
+        }
     }
 
     function updateSidebar() {
         const sidebarItems = document.querySelectorAll('.question-number');
-        sidebarItems.forEach((item, index) => {
-            item.classList.toggle('active', index === currentQuestionIndex);
-        });
+        sidebarItems.forEach(item => item.classList.remove('active'));
+        
+        const currentQuestion = document.querySelector('.question.active');
+        if (currentQuestion) {
+            const questionId = currentQuestion.id.split('-')[1];
+            const activeSidebarItem = document.getElementById(`sidebar-question-${questionId}`);
+            if (activeSidebarItem) {
+                activeSidebarItem.classList.add('active');
+            }
+        }
     }
 
     function updateNavigationButtons() {
@@ -285,3 +730,4 @@
         document.getElementById('next-btn').disabled = currentQuestionIndex === totalQuestions - 1;
     }
 </script>
+{% endblock %}

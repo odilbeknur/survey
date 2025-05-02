@@ -1,0 +1,307 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    /* Основные стили */
+    body {
+        display: flex;
+        background-color: #f5f5f5;
+    }
+
+    .container {
+        display: flex;
+        justify-content: space-between;
+        width: 80%;
+        margin: 20px auto;
+    }
+
+    .questions-container {
+        width: 70%;
+    }
+
+    .sidebar {
+        width: 25%;
+        background-color: #ffffff;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        height: 90vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+
+    .question-numbers {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .question-number {
+        padding: 10px;
+        margin: 5px 0;
+        cursor: pointer;
+        border-radius: 50%;
+        text-align: center;
+        width: 40px;
+        height: 40px;
+        border: 2px solid #ccc;
+        background-color: #f0f0f0;
+        color: #333;
+        font-weight: bold;
+        transition: background-color 0.3s, color 0.3s;
+    }
+
+    .question-number.active {
+        border: 2px solid blue;  /* Синий бордер для активного вопроса */
+        background-color: #e6f7ff; /* Светлый голубой фон для активного вопроса */
+        color: blue; /* Синий цвет текста */
+    }
+
+    .question-number.unanswered {
+        background-color: white;
+        color: black;
+    }
+
+    .question-number.answered {
+        background-color: blue;
+        color: white;
+    }
+
+    .question-number:hover {
+        background-color: #ddd;
+    }
+
+    .question {
+        margin-bottom: 20px;
+        display: none;
+    }
+
+    .question.active {
+        display: block;
+    }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    .submit-btn {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .submit-btn:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+        background-color: #45a049;
+    }
+
+    .questions-nav {
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .choices-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+</style>
+<section class="pt-6 pb-9">
+
+    <div class="container-medium">
+      
+      <h2 class="mb-5">{{ survey.title }}</h2>
+      <div class="row justify-content-between">
+        <div class="col-lg-7 col-xl-6">
+            <form method="post" id="survey-form">
+                {% csrf_token %}
+    
+                {% for question in survey.questions.all %}
+                <div class="question" id="question-{{ question.id }}" data-question-type="{{ question.question_type }}">
+                    <p><strong>{{ forloop.counter }} : {{ question.text }}</strong></p>
+    
+                    {% if errors and errors|get_item:question.id %}
+                    <div class="error" style="color:red; font-weight: 600;">{{ errors|get_item:question.id }}</div>
+                    {% endif %}
+    
+                    <!-- Вопросы с вариантами (radio, checkbox, select) -->
+                    <div class="choices-container">
+                        {% if question.question_type == 'checkbox' %}
+                            {% for choice in question.choices.all %}
+                            <div class="form-group">
+                                <input type="checkbox" id="choice_{{ question.id }}_{{ choice.id }}" 
+                                       name="question_{{ question.id }}" value="{{ choice.id }}" 
+                                       class="form-check-input" onchange="markAnswered({{ question.id }})">
+                                <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label">{{ choice.text }}</label>
+                            </div>
+                            {% endfor %}
+                        {% elif question.question_type == 'radio' %}
+                            {% for choice in question.choices.all %}
+                            <div class="form-group">
+                                <input type="radio" id="choice_{{ question.id }}_{{ choice.id }}" 
+                                       name="question_{{ question.id }}" value="{{ choice.id }}" 
+                                       class="form-check-input" required onchange="markAnswered({{ question.id }})">
+                                <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label">{{ choice.text }}</label>
+                            </div>
+                            {% endfor %}
+                        {% elif question.question_type == 'select' %}
+                        <div class="form-group">
+                            <select name="question_{{ question.id }}" class="form-control" required onchange="markAnswered({{ question.id }})">
+                                <option disabled selected value>Выберите из списка</option>
+                                {% for choice in question.choices.all %}
+                                <option value="{{ choice.id }}">{{ choice.text }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+    
+                <div class="questions-nav">
+                    <button type="button" class="submit-btn" id="prev-btn" onclick="goToPrevQuestion()" disabled>Назад</button>
+                    <button type="button" class="submit-btn" id="next-btn" onclick="goToNextQuestion()">Далее</button>
+                    <button type="submit" class="submit-btn" id="submit-btn" disabled>Отправить</button>
+                </div>
+            </form>
+        </div>
+        <div class="col-lg-5 col-xl-4">
+          <div class="card mt-5 mt-lg-0">
+            <div class="card-body">
+              <div class="col-sm text-sm-start mb-5">
+                <p class="mb-2 text-info">До окончания:</p>
+                <h3 class="mb-0 text-info fw-bold d-flex gap-2 align-items-center justify-content-sm-start fs-2">29 <span class="fs-9 fw-normal">min </span>50 <span class="fs-9 fw-normal">sec</span></h3>
+              </div>
+              <div class="card mb-3">
+                <div class="card-body">
+                    <div class="question-numbers">
+                        {% for question in survey.questions.all %}
+                        <div class="question-number unanswered" id="sidebar-question-{{ question.id }}" onclick="goToQuestion({{ question.id }})">
+                            {{ forloop.counter }} <!-- Индекс вопроса -->
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+              </div>
+              <div class="px-4 py-3 bg-body-highlight rounded-2">
+                <div class="d-flex flex-between-center">
+                  <h4 class="text-body">Total</h4>
+                  <h4 class="text-body">1,756.70</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end of .container-->
+
+  </section>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Установим первый вопрос в активное состояние при загрузке страницы
+        const firstQuestionNumber = document.querySelector('.question-number');
+        if (firstQuestionNumber) {
+            firstQuestionNumber.classList.add('active');
+        }
+
+        const firstQuestion = document.getElementById(`question-${firstQuestionNumber.textContent.trim()}`);
+        if (firstQuestion) {
+            firstQuestion.classList.add('active');
+        }
+
+        updateNavigationButtons();
+    });
+
+    // Функция для перемешивания массива
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]]; 
+        }
+    }
+
+    // Функция для перемешивания вариантов ответов
+    function shuffleChoices(questionId) {
+        const question = document.getElementById(`question-${questionId}`);
+        const choicesContainer = question.querySelector('.choices-container');
+        const choiceInputs = Array.from(choicesContainer.querySelectorAll('.form-group'));
+        shuffleArray(choiceInputs);
+        choiceInputs.forEach(input => choicesContainer.appendChild(input));
+    }
+
+    let currentQuestionIndex = 0;
+    let answeredQuestions = new Set();
+
+    function markAnswered(questionId) {
+        const questionNumber = document.getElementById(`sidebar-question-${questionId}`);
+        if (questionNumber) {
+            questionNumber.classList.remove('unanswered');
+            questionNumber.classList.add('answered');
+        }
+        answeredQuestions.add(questionId);
+        checkAllAnswered();
+    }
+
+    function checkAllAnswered() {
+        const totalQuestions = document.querySelectorAll('.question').length;
+        const submitButton = document.getElementById('submit-btn');
+        submitButton.disabled = answeredQuestions.size !== totalQuestions;
+    }
+
+    function goToNextQuestion() {
+        const questions = document.querySelectorAll('.question');
+        if (currentQuestionIndex < questions.length - 1) {
+            questions[currentQuestionIndex].classList.remove('active');
+            currentQuestionIndex++;
+            questions[currentQuestionIndex].classList.add('active');
+            updateSidebar();
+        }
+        updateNavigationButtons();
+    }
+
+    function goToPrevQuestion() {
+        const questions = document.querySelectorAll('.question');
+        if (currentQuestionIndex > 0) {
+            questions[currentQuestionIndex].classList.remove('active');
+            currentQuestionIndex--;
+            questions[currentQuestionIndex].classList.add('active');
+            updateSidebar();
+        }
+        updateNavigationButtons();
+    }
+
+    function goToQuestion(questionId) {
+        const questionElements = document.querySelectorAll('.question');
+        questionElements.forEach(question => question.classList.remove('active'));
+        document.getElementById(`question-${questionId}`).classList.add('active');
+        currentQuestionIndex = Array.from(questionElements).findIndex(question => question.id === `question-${questionId}`);
+        updateSidebar();
+        updateNavigationButtons();
+    }
+
+    function updateSidebar() {
+        const sidebarItems = document.querySelectorAll('.question-number');
+        sidebarItems.forEach((item, index) => {
+            item.classList.toggle('active', index === currentQuestionIndex);
+        });
+    }
+
+    function updateNavigationButtons() {
+        const totalQuestions = document.querySelectorAll('.question').length;
+        document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+        document.getElementById('next-btn').disabled = currentQuestionIndex === totalQuestions - 1;
+    }
+</script>
+  {% endblock %}

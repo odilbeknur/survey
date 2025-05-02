@@ -1,0 +1,523 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block content %}
+<style>
+    .questions-container {
+        width: 70%;
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .question-numbers {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .question-number {
+        padding: 10px;
+        margin: 5px 0;
+        cursor: pointer;
+        border-radius: 50%;
+        text-align: center;
+        width: 42px;
+        height: 42px;
+        border: 2px solid #e0e0e0;
+        background-color: #f8f9fa;
+        color: #495057;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+
+    .question-number.active {
+        border: 2px solid #4361ee;
+        background-color: #4361ee;
+        color: white;
+        transform: scale(1.05);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+    }
+
+    .question-number.unanswered {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        border: 2px solid #dee2e6;
+    }
+
+    .question-number.answered {
+        background-color: #4cc9f0;
+        color: white;
+        border: 2px solid #3a86ff;
+    }
+
+    .question-number:hover:not(.active) {
+        background-color: #e9ecef;
+        transform: scale(1.03);
+    }
+
+    .question {
+        margin-bottom: 30px;
+        display: none;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #4361ee;
+    }
+
+    .question.active {
+        display: block;
+        animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+        padding: 12px;
+        background-color: white;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .form-group:hover {
+        background-color: #f1f3ff;
+        transform: translateX(3px);
+    }
+
+    .form-check-input {
+        margin-right: 10px;
+        cursor: pointer;
+    }
+
+    .form-check-label {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .questions-nav {
+        margin-top: 30px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .btn-nav {
+        padding: 10px 25px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-nav:hover {
+        transform: translateY(-2px);
+    }
+
+    .choices-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .survey-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .survey-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #212529;
+        margin: 0;
+    }
+
+    .survey-description {
+        color: #6c757d;
+        margin-bottom: 25px;
+        line-height: 1.6;
+    }
+
+    .progress-container {
+        margin-bottom: 25px;
+    }
+
+    .progress-text {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .progress-bar {
+        height: 8px;
+        border-radius: 4px;
+        background-color: #e9ecef;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background-color: #4361ee;
+        transition: width 0.5s ease;
+    }
+
+    .timer-container {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .timer-text {
+        font-size: 14px;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+
+    .timer-display {
+        font-size: 24px;
+        font-weight: 700;
+        color: #4361ee;
+    }
+
+    .submit-btn-container {
+        width: 100%;
+        background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: none;
+        font-weight: 600;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .submit-btn-container:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .submit-btn-container:disabled {
+        background: #e9ecef;
+        cursor: not-allowed;
+        color: #adb5bd;
+    }
+
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    .error {
+        color: #d90429;
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #fff5f5;
+        border-radius: 6px;
+        border-left: 4px solid #d90429;
+    }
+
+    select.form-control {
+        padding: 10px 15px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+
+    select.form-control:focus {
+        border-color: #4361ee;
+        box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+    }
+
+    .question-text {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #212529;
+        line-height: 1.4;
+    }
+
+    .survey-instructions {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        border-left: 4px solid #4361ee;
+    }
+
+    .instructions-title {
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #4361ee;
+    }
+
+    .instructions-list {
+        padding-left: 20px;
+        margin-bottom: 0;
+    }
+
+    .instructions-list li {
+        margin-bottom: 8px;
+    }
+</style>
+
+<section class="pt-6 pb-9">
+    <div class="container-medium">
+        <div class="survey-header">
+            <h2 class="survey-title">{{ survey.title }}</h2>
+            <div class="progress-container">
+                <div class="progress-text">
+                    <span>Прогресс</span>
+                    <span id="progress-count">0/{{ survey.questions.count }}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="survey-description">
+            {{ survey.description|default:"Пожалуйста, ответьте на все вопросы. После завершения теста вы увидите свои результаты." }}
+        </div>
+
+        <div class="survey-instructions">
+            <div class="instructions-title">Инструкции:</div>
+            <ul class="instructions-list">
+                <li>Ответьте на все вопросы для завершения теста</li>
+                <li>Вы можете вернуться к предыдущим вопросам</li>
+                <li>Время прохождения теста ограничено</li>
+                <li>Обязательные вопросы отмечены звёздочкой (*)</li>
+            </ul>
+        </div>
+
+        <div class="row justify-content-between">
+            <div class="col-lg-7 col-xl-7">
+                <form method="post" id="survey-form">
+                    {% csrf_token %}
+                    
+                    {% for question in survey.questions.all %}
+                    <div class="question fs-6" id="question-{{ question.id }}" data-question-type="{{ question.question_type }}">
+                        <p class="question-text">{{ forloop.counter }}. {{ question.text }}{% if question.is_required %} <span class="text-danger">*</span>{% endif %}</p>
+
+                        {% if errors and errors|get_item:question.id %}
+                        <div class="error">{{ errors|get_item:question.id }}</div>
+                        {% endif %}
+
+                        <div class="choices-container fs-7">
+                            {% if question.question_type == 'checkbox' %}
+                                {% for choice in question.choices.all %}
+                                <div class="form-group">
+                                    <input type="checkbox" id="choice_{{ question.id }}_{{ choice.id }}" 
+                                           name="question_{{ question.id }}" value="{{ choice.id }}" 
+                                           class="form-check-input" onchange="markAnswered({{ question.id }})">
+                                    <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label fs-8">{{ choice.text }}</label>
+                                </div>
+                                {% endfor %}
+                            {% elif question.question_type == 'radio' %}
+                                {% for choice in question.choices.all %}
+                                <div class="form-group">
+                                    <input type="radio" id="choice_{{ question.id }}_{{ choice.id }}" 
+                                           name="question_{{ question.id }}" value="{{ choice.id }}" 
+                                           class="form-check-input" {% if question.is_required %}required{% endif %} onchange="markAnswered({{ question.id }})">
+                                    <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label fs-7">{{ choice.text }}</label>
+                                </div>
+                                {% endfor %}
+                            {% elif question.question_type == 'select' %}
+                            <div class="form-group">
+                                <select name="question_{{ question.id }}" class="form-control" {% if question.is_required %}required{% endif %} onchange="markAnswered({{ question.id }})">
+                                    <option disabled selected value>Выберите из списка</option>
+                                    {% for choice in question.choices.all %}
+                                    <option value="{{ choice.id }}">{{ choice.text }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <div class="questions-nav">
+                        <button type="button" class="btn btn-primary btn-nav" id="prev-btn" onclick="goToPrevQuestion()" disabled>
+                            <i class="fas fa-arrow-left me-2"></i> Назад
+                        </button>
+                        <button type="button" class="btn btn-primary btn-nav" id="next-btn" onclick="goToNextQuestion()">
+                            Далее <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+            </div>
+            <div class="col-lg-5 col-xl-4">
+                <div class="card mt-5 mt-lg-0">
+                    <div class="card-body">
+                        <div class="timer-container">
+                            <div class="timer-text">Оставшееся время</div>
+                            <div class="timer-display" id="timer">29:50</div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">Вопросы</h5>
+                                <div class="question-numbers">
+                                    {% for question in survey.questions.all %}
+                                    <div class="question-number unanswered" id="sidebar-question-{{ question.id }}" onclick="goToQuestion({{ question.id }})">
+                                        {{ forloop.counter }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="submit-btn-container" id="submit-btn" disabled>
+                                <span class="submit-btn-text">Завершить тест</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Установим первый вопрос в активное состояние при загрузке страницы
+        const firstQuestion = document.querySelector('.question');
+        if (firstQuestion) {
+            firstQuestion.classList.add('active');
+            const questionId = firstQuestion.id.split('-')[1];
+            document.getElementById(`sidebar-question-${questionId}`).classList.add('active');
+        }
+
+        updateNavigationButtons();
+        updateProgress();
+
+        // Инициализация таймера (примерная реализация)
+        initializeTimer(29 * 60 + 50); // 29 минут 50 секунд
+    });
+
+    function initializeTimer(totalSeconds) {
+        const timerElement = document.getElementById('timer');
+        let secondsLeft = totalSeconds;
+        
+        const timerInterval = setInterval(() => {
+            secondsLeft--;
+            
+            const minutes = Math.floor(secondsLeft / 60);
+            const seconds = secondsLeft % 60;
+            
+            timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (secondsLeft <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('survey-form').submit();
+            }
+        }, 1000);
+    }
+
+    function updateProgress() {
+        const totalQuestions = document.querySelectorAll('.question').length;
+        const answeredCount = document.querySelectorAll('.question-number.answered').length;
+        
+        document.getElementById('progress-count').textContent = `${answeredCount}/${totalQuestions}`;
+        document.getElementById('progress-fill').style.width = `${(answeredCount / totalQuestions) * 100}%`;
+    }
+
+    let currentQuestionIndex = 0;
+    let answeredQuestions = new Set();
+
+    function markAnswered(questionId) {
+        const questionNumber = document.getElementById(`sidebar-question-${questionId}`);
+        if (questionNumber) {
+            questionNumber.classList.remove('unanswered');
+            questionNumber.classList.add('answered');
+        }
+        answeredQuestions.add(questionId);
+        checkAllAnswered();
+        updateProgress();
+    }
+
+    function checkAllAnswered() {
+        const totalQuestions = document.querySelectorAll('.question').length;
+        const submitButton = document.getElementById('submit-btn');
+        submitButton.disabled = answeredQuestions.size !== totalQuestions;
+    }
+
+    function goToNextQuestion() {
+        const questions = document.querySelectorAll('.question');
+        if (currentQuestionIndex < questions.length - 1) {
+            questions[currentQuestionIndex].classList.remove('active');
+            currentQuestionIndex++;
+            questions[currentQuestionIndex].classList.add('active');
+            updateSidebar();
+        }
+        updateNavigationButtons();
+    }
+
+    function goToPrevQuestion() {
+        const questions = document.querySelectorAll('.question');
+        if (currentQuestionIndex > 0) {
+            questions[currentQuestionIndex].classList.remove('active');
+            currentQuestionIndex--;
+            questions[currentQuestionIndex].classList.add('active');
+            updateSidebar();
+        }
+        updateNavigationButtons();
+    }
+
+    function goToQuestion(questionId) {
+        const questionElements = document.querySelectorAll('.question');
+        questionElements.forEach(question => question.classList.remove('active'));
+        
+        const targetQuestion = document.getElementById(`question-${questionId}`);
+        if (targetQuestion) {
+            targetQuestion.classList.add('active');
+            currentQuestionIndex = Array.from(questionElements).findIndex(question => question.id === `question-${questionId}`);
+            updateSidebar();
+            updateNavigationButtons();
+        }
+    }
+
+    function updateSidebar() {
+        const sidebarItems = document.querySelectorAll('.question-number');
+        sidebarItems.forEach(item => item.classList.remove('active'));
+        
+        const currentQuestion = document.querySelector('.question.active');
+        if (currentQuestion) {
+            const questionId = currentQuestion.id.split('-')[1];
+            const activeSidebarItem = document.getElementById(`sidebar-question-${questionId}`);
+            if (activeSidebarItem) {
+                activeSidebarItem.classList.add('active');
+            }
+        }
+    }
+
+    function updateNavigationButtons() {
+        const totalQuestions = document.querySelectorAll('.question').length;
+        document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+        document.getElementById('next-btn').disabled = currentQuestionIndex === totalQuestions - 1;
+    }
+</script>
+{% endblock %}
