@@ -66,14 +66,10 @@
     .question {
         margin-bottom: 30px;
         display: none;
-        padding: 25px;
-        background-color: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        border-left: 6px solid #4361ee;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #4361ee;
     }
 
     .question.active {
@@ -407,13 +403,11 @@
     }
 
     .question-text {
-        font-size: 20px;
-        font-weight: 700;
-        margin-bottom: 25px;
-        color: #2c3e50;
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #212529;
         line-height: 1.4;
-        position: relative;
-        padding-left: 20px;
     }
 
     .survey-instructions {
@@ -438,42 +432,6 @@
     .instructions-list-main li {
         margin-bottom: 8px;
     }
-    .modal-content {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  }
-  
-  .modal-header {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-  
-  .modal-title {
-    font-weight: 600;
-    color: #2c3e50;
-  }
-  
-  .modal-body {
-    padding: 2rem;
-  }
-  
-  .modal-footer {
-    border-top: none;
-    padding-top: 0;
-  }
-  
-  #confirm-submit {
-    background-color: #4e73df;
-    border-color: #4e73df;
-    padding: 0.5rem 1.5rem;
-    font-weight: 500;
-  }
-  
-  #confirm-submit:hover {
-    background-color: #3a5bc7;
-    border-color: #3a5bc7;
-  }
 </style>
 
 <section class="pt-6 pb-9">
@@ -485,41 +443,62 @@
         </div>
         
         <!-- Улучшенная шкала прогресса -->
-       
+        <div class="progress-container">
+            <div class="progress-header">
+                <div class="progress-title">Ваш прогресс</div>
+                <div class="progress-count" id="progress-count">0/{{ survey.questions.count }}</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
 
         <div class="row justify-content-between">
-            <div class="col-lg-3 col-xl-3">
-                <div class="card mt-5 mt-lg-0">
-                    <div class="card-body">
-                        <div class="progress-container">
-                            <div class="progress-header">
-                                <div class="progress-title">Прогресс</div>
-                                <div class="progress-count" id="progress-count">0/{{ survey.questions.count }}</div>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div class="card mb-3">
-                            <div class="card-body">
-                                <h5 class="card-title mb-3">Вопросы</h5>
-                                <div class="question-numbers" id="sidebar-questions">
-                                    <!-- Будет заполнено JavaScript -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-6 col-xl-6">
+            <div class="col-lg-7 col-xl-7">
                 <form method="post" id="survey-form">
                     {% csrf_token %}
                     
-                    <!-- Генерация случайного seed для теста -->
-                    <input type="hidden" id="survey-seed" name="survey_seed" value="{{ random_seed }}">
-                    
-                    <!-- Контейнер для вопросов (заполняется JavaScript) -->
-                    <div id="questions-container"></div>
+                    {% for question in survey.questions.all %}
+                    <div class="question fs-6" id="question-{{ question.id }}" data-question-type="{{ question.question_type }}">
+                        <p class="question-text">{{ forloop.counter }}. {{ question.text }}{% if question.is_required %} <span class="text-danger">*</span>{% endif %}</p>
+
+                        {% if errors and errors|get_item:question.id %}
+                        <div class="error">{{ errors|get_item:question.id }}</div>
+                        {% endif %}
+
+                        <div class="choices-container fs-7">
+                            {% if question.question_type == 'checkbox' %}
+                                {% for choice in question.choices.all %}
+                                <div class="form-group">
+                                    <input type="checkbox" id="choice_{{ question.id }}_{{ choice.id }}" 
+                                           name="question_{{ question.id }}" value="{{ choice.id }}" 
+                                           class="form-check-input" onchange="markAnswered({{ question.id }}, this)">
+                                    <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label fs-7">{{ choice.text }}</label>
+                                </div>
+                                {% endfor %}
+                            {% elif question.question_type == 'radio' %}
+                                {% for choice in question.choices.all %}
+                                <div class="form-group">
+                                    <input type="radio" id="choice_{{ question.id }}_{{ choice.id }}" 
+                                           name="question_{{ question.id }}" value="{{ choice.id }}" 
+                                           class="form-check-input" {% if question.is_required %}required{% endif %} 
+                                           onchange="markAnswered({{ question.id }}, this)">
+                                    <label for="choice_{{ question.id }}_{{ choice.id }}" class="form-check-label fs-7">{{ choice.text }}</label>
+                                </div>
+                                {% endfor %}
+                            {% elif question.question_type == 'select' %}
+                            <div class="form-group">
+                                <select name="question_{{ question.id }}" class="form-control" {% if question.is_required %}required{% endif %} onchange="markAnswered({{ question.id }}, this)">
+                                    <option disabled selected value>Выберите из списка</option>
+                                    {% for choice in question.choices.all %}
+                                    <option value="{{ choice.id }}">{{ choice.text }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
 
                     <div class="questions-nav">
                         <button type="button" class="btn btn-primary btn-nav" id="prev-btn" onclick="goToPrevQuestion()" disabled>
@@ -530,7 +509,7 @@
                         </button>
                     </div>
             </div>
-            <div class="col-lg-3 col-xl-3">
+            <div class="col-lg-5 col-xl-4">
                 <div class="card mt-5 mt-lg-0">
                     <div class="card-body">
                         <!-- Улучшенный таймер -->
@@ -538,6 +517,20 @@
                             <div class="timer-text">Оставшееся время</div>
                             <div class="timer-display" id="timer">{{ survey.duration_minutes|default:"30" }}:00</div>
                         </div>
+
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">Вопросы</h5>
+                                <div class="question-numbers">
+                                    {% for question in survey.questions.all %}
+                                    <div class="question-number unanswered" id="sidebar-question-{{ question.id }}" onclick="goToQuestion({{ question.id }})">
+                                        {{ forloop.counter }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Перенесённая инструкция перед кнопкой завершения -->
                         <div class="completion-instructions">
                             <div class="instructions-title">
@@ -563,32 +556,6 @@
     </div>
 </section>
 
-<div id="confirmation-modal" class="modal fade" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Подтверждение завершения теста</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body text-center">
-          <div class="mb-4">
-            <i class="fas fa-question-circle fa-4x text-primary"></i>
-          </div>
-          <h4 class="mb-3">Вы уверены, что хотите завершить тест?</h4>
-          <p class="text-muted">После завершения вы не сможете изменить свои ответы.</p>
-        </div>
-        <div class="modal-footer justify-content-center">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            <i class="fas fa-arrow-left me-2"></i> Вернуться к тесту
-          </button>
-          <button type="button" class="btn btn-primary" id="confirm-submit">
-            <i class="fas fa-check me-2"></i> Да, завершить
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
 <script>
     // Глобальные переменные
     let timerInterval = null;
@@ -596,169 +563,43 @@
     let answeredQuestions = new Set();
     let currentSecondsLeft = 0;
     let surveyDurationMinutes = {{ survey.duration_minutes|default:30 }};
-    let shuffledQuestions = [];
-    let shuffledChoices = {};
 
     // Основная функция инициализации
     document.addEventListener('DOMContentLoaded', function() {
-        // Генерируем или получаем seed для перемешивания
-        const seedKey = 'surveySeed_' + {{ survey.id }};
-        let seed = localStorage.getItem(seedKey);
-
-        if (!seed) {
-            seed = Math.floor(Math.random() * 1000000);
-            localStorage.setItem(seedKey, seed);
-        }
-
-        document.getElementById('survey-seed').value = seed;
-
+        // Инициализация вопросов
+        initQuestions();
         
-        // Инициализируем перемешанные вопросы и варианты
-        initShuffledQuestions(seed);
-        renderQuestions();
-        initTimer();
-        setupEventListeners();
-        
-        // Восстанавливаем состояние
+        // Восстановление состояния
         restoreState();
-        setTimeout(checkAllAnswered, 300);
+        
+        // Запуск таймера
+        initTimer();
+        
+        // Настройка обработчиков событий
+        setupEventListeners();
     });
 
-    // Функция для перемешивания вопросов и вариантов
-    function initShuffledQuestions(seed) {
-        // Простая детерминированная функция shuffle с seed
-        function seededShuffle(array, seed) {
-            let currentSeed = seed;
-            const random = () => {
-                const x = Math.sin(currentSeed++) * 10000;
-                return x - Math.floor(x);
-            };
-            
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
-        }
-
-        // Получаем вопросы из шаблона
-        const questions = [
-            {% for question in survey.questions.all %}
-            {
-                id: {{ question.id }},
-                text: `{{ question.text }}`,
-                question_type: `{{ question.question_type }}`,
-                is_required: {% if question.is_required %}true{% else %}false{% endif %},
-                choices: [
-                    {% for choice in question.choices.all %}
-                    {
-                        id: {{ choice.id }},
-                        text: `{{ choice.text }}`
-                    },
-                    {% endfor %}
-                ]
-            },
-            {% endfor %}
-        ];
-
-        // Перемешиваем вопросы
-        shuffledQuestions = seededShuffle([...questions], seed);
-        
-        // Перемешиваем варианты для каждого вопроса
-        shuffledChoices = {};
-        shuffledQuestions.forEach(question => {
-            shuffledChoices[question.id] = seededShuffle([...question.choices], seed + question.id);
-        });
-    }
-
-    // Функция для отрисовки перемешанных вопросов
-    function renderQuestions() {
-        const container = document.getElementById('questions-container');
-        const sidebarContainer = document.getElementById('sidebar-questions');
-        
-        container.innerHTML = '';
-        sidebarContainer.innerHTML = '';
-        
-        shuffledQuestions.forEach((question, index) => {
-            // Сохраняем оригинальный ID вопроса и его новый индекс
-            const questionId = question.id;
-            const isActive = index === currentQuestionIndex;
-            
-            // Рендерим основной вопрос
-            const questionElement = document.createElement('div');
-            questionElement.className = `question fs-6 ${isActive ? 'active' : ''}`;
-            questionElement.id = `question-${questionId}`;
-            questionElement.dataset.questionType = question.question_type;
-            questionElement.dataset.originalIndex = index; // Сохраняем индекс в data-атрибуте
-            
-            let choicesHTML = '';
-            const choices = shuffledChoices[questionId] || question.choices;
-            
-            if (question.question_type === 'checkbox') {
-                choices.forEach(choice => {
-                    choicesHTML += `
-                    <div class="form-group">
-                        <input type="checkbox" id="choice_${questionId}_${choice.id}" 
-                            name="question_${questionId}" value="${choice.id}" 
-                            class="form-check-input">
-                        <label for="choice_${questionId}_${choice.id}" class="form-check-label fs-7">${choice.text}</label>
-                    </div>`;
-                });
-            } else if (question.question_type === 'radio') {
-                choices.forEach(choice => {
-                    choicesHTML += `
-                    <div class="form-group">
-                        <input type="radio" id="choice_${questionId}_${choice.id}" 
-                            name="question_${questionId}" value="${choice.id}" 
-                            class="form-check-input" ${question.is_required ? 'required' : ''}>
-                        <label for="choice_${questionId}_${choice.id}" class="form-check-label fs-7">${choice.text}</label>
-                    </div>`;
-                });
-            } else if (question.question_type === 'select') {
-                choicesHTML += `
-                <div class="form-group">
-                    <select name="question_${questionId}" class="form-control" ${question.is_required ? 'required' : ''}>
-                        <option disabled selected value>Выберите из списка</option>
-                        ${choices.map(choice => `
-                        <option value="${choice.id}">${choice.text}</option>
-                        `).join('')}
-                    </select>
-                </div>`;
-            }
-            
-            questionElement.innerHTML = `
-                <p class="question-text">${index + 1}. ${question.text}${question.is_required ? ' <span class="text-danger">*</span>' : ''}</p>
-                <div class="choices-container fs-7">
-                    ${choicesHTML}
-                </div>`;
-            
-            container.appendChild(questionElement);
-            
-            // Рендерим номер вопроса в сайдбаре
-            const sidebarNumber = document.createElement('div');
-            sidebarNumber.className = `question-number unanswered ${isActive ? 'active' : ''}`;
-            sidebarNumber.id = `sidebar-question-${questionId}`;
-            sidebarNumber.textContent = index + 1;
-            sidebarNumber.addEventListener('click', () => goToQuestion(questionId));
-            sidebarContainer.appendChild(sidebarNumber);
-        });
-    }
-
-
+    // Инициализация вопросов
     function initQuestions() {
         const questions = document.querySelectorAll('.question');
         if (questions.length === 0) return;
+        
+        // Активируем первый вопрос
         questions[0].classList.add('active');
         updateSidebar();
         updateNavigationButtons();
     }
 
+    // Восстановление состояния
     function restoreState() {
+        // Восстанавливаем ответы и прогресс
         restoreAnswers();
+        
+        // Обновляем прогресс
         updateProgress();
-        setTimeout(checkAllAnswered, 200); // Добавлена проверка после восстановления
     }
 
+    // Инициализация таймера
     function initTimer() {
         const timerElement = document.getElementById('timer');
         if (!timerElement) return;
@@ -767,6 +608,7 @@
         const savedTimerData = localStorage.getItem(STORAGE_KEY);
         
         if (savedTimerData) {
+            // Восстанавливаем таймер из сохраненных данных
             const { startTime, duration } = JSON.parse(savedTimerData);
             const now = Math.floor(Date.now() / 1000);
             currentSecondsLeft = (duration * 60) - (now - startTime);
@@ -777,20 +619,27 @@
                 return;
             }
         } else {
+            // Новый таймер
             currentSecondsLeft = surveyDurationMinutes * 60;
             saveTimerState();
         }
+        
+        // Запускаем таймер
         startTimer();
     }
 
+    // Запуск таймера
     function startTimer() {
         const timerElement = document.getElementById('timer');
         if (!timerElement) return;
         
+        // Очищаем предыдущий интервал
         if (timerInterval) clearInterval(timerInterval);
         
+        // Немедленное обновление
         updateTimerDisplay(timerElement);
         
+        // Устанавливаем интервал
         timerInterval = setInterval(function() {
             currentSecondsLeft--;
             updateTimerDisplay(timerElement);
@@ -803,6 +652,7 @@
         }, 1000);
     }
 
+    // Обновление отображения таймера
     function updateTimerDisplay(element) {
         const minutes = Math.floor(currentSecondsLeft / 60);
         const seconds = currentSecondsLeft % 60;
@@ -811,9 +661,13 @@
         if (currentSecondsLeft <= 60) {
             element.style.color = '#ff4d4f';
             element.style.fontWeight = '800';
+        } else {
+            element.style.color = '';
+            element.style.fontWeight = '';
         }
     }
 
+    // Сохранение состояния таймера
     function saveTimerState() {
         localStorage.setItem('surveyTimer_' + {{ survey.id }}, JSON.stringify({
             startTime: Math.floor(Date.now() / 1000),
@@ -822,6 +676,7 @@
         }));
     }
 
+    // Сохранение ответов
     function saveAnswers() {
         const answers = {};
         
@@ -841,6 +696,7 @@
         }));
     }
 
+    // Восстановление ответов
     function restoreAnswers() {
         const savedData = localStorage.getItem('surveyAnswers_' + {{ survey.id }});
         if (!savedData) return;
@@ -848,6 +704,7 @@
         try {
             const { answers, currentQuestion, answered } = JSON.parse(savedData);
 
+            // Восстанавливаем ответы
             for (const [name, value] of Object.entries(answers)) {
                 if (Array.isArray(value)) {
                     value.forEach(val => {
@@ -866,10 +723,12 @@
                 }
             }
 
+            // Восстанавливаем текущий вопрос
             if (currentQuestion !== undefined) {
                 goToQuestionByIndex(currentQuestion);
             }
 
+            // Восстанавливаем прогресс
             if (answered) {
                 answeredQuestions = new Set(answered);
                 answered.forEach(questionId => {
@@ -878,7 +737,6 @@
                         questionNumber.classList.remove('unanswered');
                         questionNumber.classList.add('answered');
                     }
-                    markQuestionAsAnsweredInUI(document.getElementById(`question-${questionId}`));
                 });
             }
         } catch (e) {
@@ -886,24 +744,7 @@
         }
     }
 
-    function markQuestionAsAnsweredInUI(questionElement) {
-        if (!questionElement) return;
-        
-        questionElement.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
-            radio.closest('.form-group').classList.add('selected');
-        });
-        
-        questionElement.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-            cb.closest('.form-group').classList.add('selected');
-        });
-        
-        questionElement.querySelectorAll('select').forEach(select => {
-            if (select.value) {
-                select.closest('.form-group').classList.add('selected');
-            }
-        });
-    }
-
+    // Настройка обработчиков событий
     function setupEventListeners() {
         // Обработчики кликов по вариантам ответов
         document.querySelectorAll('.form-group').forEach(group => {
@@ -922,7 +763,7 @@
             });
         });
 
-        // Обработчики изменений в полях ввода
+        // Обработчики изменений
         document.querySelectorAll('input, select').forEach(input => {
             input.addEventListener('change', function() {
                 const questionId = this.closest('.question').id.split('-')[1];
@@ -930,58 +771,19 @@
             });
         });
 
-        // Получаем элементы формы и модального окна
+        // Обработчик отправки формы
         const form = document.getElementById('survey-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const modalElement = document.getElementById('confirmation-modal');
-        
-        // Инициализируем модальное окно, если оно существует
-        let modal = null;
-        if (modalElement) {
-            modal = new bootstrap.Modal(modalElement);
-        }
-
-        // Обработчик для кнопки отправки
-        if (submitBtn) {
-            submitBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (modal) {
-                    modal.show();
-                } else if (form) {
-                    // Если модального окна нет, отправляем форму сразу
-                    localStorage.removeItem('surveyTimer_' + {{ survey.id }});
-                    localStorage.removeItem('surveyAnswers_' + {{ survey.id }});
-                    localStorage.removeItem('surveySeed_' + {{ survey.id }});
-                    form.submit();
-                }
-            });
-        }
-
-        // Обработчик для кнопки подтверждения в модальном окне
-        const confirmSubmitBtn = document.getElementById('confirm-submit');
-        if (confirmSubmitBtn && form) {
-            confirmSubmitBtn.addEventListener('click', function() {
-                localStorage.removeItem('surveyTimer_' + {{ survey.id }});
-                localStorage.removeItem('surveyAnswers_' + {{ survey.id }});
-                localStorage.removeItem('surveySeed_' + {{ survey.id }});
-                form.submit();
-                if (modal) {
-                    modal.hide();
-                }
-            });
-        }
-
-        // Обработчик отправки формы (на случай, если форма отправляется другим способом)
         if (form) {
             form.addEventListener('submit', function(e) {
                 localStorage.removeItem('surveyTimer_' + {{ survey.id }});
                 localStorage.removeItem('surveyAnswers_' + {{ survey.id }});
-                localStorage.removeItem('surveySeed_' + {{ survey.id }});
             });
         }
     }
 
+    // Отметка ответа
     function markAnswered(questionId, element) {
+        // Обновляем стили
         if (element.type === 'radio') {
             document.querySelectorAll(`input[name="${element.name}"]`).forEach(input => {
                 input.closest('.form-group').classList.remove('selected');
@@ -995,61 +797,23 @@
             element.closest('.form-group').classList.toggle('selected', element.value !== '');
         }
 
+        // Обновляем статус вопроса
         const questionNumber = document.getElementById(`sidebar-question-${questionId}`);
         if (questionNumber) {
             questionNumber.classList.remove('unanswered');
             questionNumber.classList.add('answered');
         }
         
+        // Сохраняем состояние
         answeredQuestions.add(questionId);
         updateProgress();
         saveAnswers();
-        checkAllAnswered();
+        
+        // Проверяем все вопросы после каждого ответа
+        setTimeout(checkAllAnswered, 100); // Небольшая задержка для гарантии обновления DOM
     }
 
-    function checkAllAnswered() {
-        const totalQuestions = document.querySelectorAll('.question').length;
-        const submitBtn = document.getElementById('submit-btn');
-        
-        if (!submitBtn) return;
-        
-        const allQuestionsAnswered = Array.from(document.querySelectorAll('.question')).every(question => {
-            const questionId = question.id.split('-')[1];
-            return isQuestionAnswered(question);
-        });
-        
-        submitBtn.disabled = !allQuestionsAnswered;
-    }
-
-    function isQuestionAnswered(questionElement) {
-        const radioGroups = {};
-        questionElement.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radioGroups[radio.name] = radioGroups[radio.name] || false;
-            if (radio.checked) radioGroups[radio.name] = true;
-        });
-        if (Object.keys(radioGroups).length > 0) {
-            if (!Object.values(radioGroups).every(checked => checked)) {
-                return false;
-            }
-        }
-        
-        const checkboxes = questionElement.querySelectorAll('input[type="checkbox"]');
-        if (checkboxes.length > 0) {
-            if (!Array.from(checkboxes).some(cb => cb.checked)) {
-                return false;
-            }
-        }
-        
-        const selects = questionElement.querySelectorAll('select');
-        if (selects.length > 0) {
-            if (!Array.from(selects).every(select => select.value !== '')) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
-
+    // Навигация по вопросам
     function goToQuestionByIndex(index) {
         const questions = document.querySelectorAll('.question');
         if (index >= 0 && index < questions.length) {
@@ -1075,6 +839,7 @@
         if (index !== -1) goToQuestionByIndex(index);
     }
 
+    // Обновление боковой панели
     function updateSidebar() {
         const sidebarItems = document.querySelectorAll('.question-number');
         sidebarItems.forEach(item => item.classList.remove('active'));
@@ -1087,6 +852,7 @@
         }
     }
 
+    // Обновление кнопок навигации
     function updateNavigationButtons() {
         const totalQuestions = document.querySelectorAll('.question').length;
         const prevBtn = document.getElementById('prev-btn');
@@ -1096,43 +862,60 @@
         if (nextBtn) nextBtn.disabled = currentQuestionIndex === totalQuestions - 1;
     }
 
-    function updateProgress() {
-            const questions = document.querySelectorAll('.question');
-            const totalQuestions = questions.length;
-            
-            // Правильно считаем отвеченные вопросы (с учетом чекбоксов)
-            let trulyAnsweredCount = 0;
-            
-            questions.forEach(question => {
-                const questionId = question.id.split('-')[1];
-                
-                // Проверяем, действительно ли вопрос отвечен
-                if (isQuestionAnswered(question)) {
-                    trulyAnsweredCount++;
-                    answeredQuestions.add(questionId); // Добавляем в множество отвеченных
-                } else {
-                    answeredQuestions.delete(questionId); // Удаляем, если вопрос не отвечен
-                }
-            });
-            
-            const percentage = Math.round((trulyAnsweredCount / totalQuestions) * 100);
-            
-            const progressCount = document.getElementById('progress-count');
-            const progressFill = document.getElementById('progress-fill');
-            
-            if (progressCount) progressCount.textContent = `${trulyAnsweredCount}/${totalQuestions}`;
-            if (progressFill) {
-                progressFill.style.width = `${percentage}%`;
-                progressFill.classList.toggle('completed', percentage === 100);
-            }
-            
-            // Обновляем состояние кнопки отправки
-            const submitBtn = document.getElementById('submit-btn');
-            if (submitBtn) {
-                submitBtn.disabled = trulyAnsweredCount !== totalQuestions;
-            }
+    // Проверка завершенности теста
+    function checkAllAnswered() {
+    const totalQuestions = document.querySelectorAll('.question').length;
+    const submitBtn = document.getElementById('submit-btn');
+    
+    // Дополнительная проверка - убедимся, что все вопросы действительно отвечены
+    const allAnswered = Array.from(document.querySelectorAll('.question')).every(question => {
+        const questionId = question.id.split('-')[1];
+        
+        // Проверка для радиокнопок
+        const radioGroups = question.querySelectorAll('input[type="radio"]');
+        if (radioGroups.length > 0) {
+            const groupNames = new Set(Array.from(radioGroups).map(r => r.name));
+            return Array.from(groupNames).every(name => 
+                question.querySelector(`input[type="radio"][name="${name}"]:checked`) !== null
+            );
         }
+        
+        // Проверка для чекбоксов (считаем отвеченным, если хотя бы один выбран)
+        const checkboxes = question.querySelectorAll('input[type="checkbox"]');
+        if (checkboxes.length > 0) {
+            return Array.from(checkboxes).some(cb => cb.checked);
+        }
+        
+        // Проверка для select
+        const selects = question.querySelectorAll('select');
+        if (selects.length > 0) {
+            return Array.from(selects).every(select => select.value !== '');
+        }
+        
+        // Если нет элементов ввода, считаем вопрос отвеченным
+        return true;
+    });
+    
+    if (submitBtn) submitBtn.disabled = !allAnswered;
+}
 
+    // Обновление прогресса
+    function updateProgress() {
+        const totalQuestions = document.querySelectorAll('.question').length;
+        const answeredCount = answeredQuestions.size;
+        const percentage = Math.round((answeredCount / totalQuestions) * 100);
+        
+        const progressCount = document.getElementById('progress-count');
+        const progressFill = document.getElementById('progress-fill');
+        
+        if (progressCount) progressCount.textContent = `${answeredCount}/${totalQuestions}`;
+        if (progressFill) {
+            progressFill.style.width = `${percentage}%`;
+            progressFill.classList.toggle('completed', percentage === 100);
+        }
+    }
+
+    // Отправка формы
     function submitForm() {
         const form = document.getElementById('survey-form');
         if (form) form.submit();

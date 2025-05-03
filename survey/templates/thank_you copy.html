@@ -172,10 +172,20 @@
                 font-size: 2.5rem;
             }
         }
+        .fa-times-circle {
+            color: #F44336;
+        }
+        .score-container.fail {
+            background: linear-gradient(135deg, #F44336 0%, #E91E63 100%);
+        }
+        .btn-home.fail {
+            background: #F44336;
+        }
     </style>
 </head>
 <body>
     <div class="thank-you-container">
+        <!-- Иконка будет меняться в зависимости от результата -->
         <div class="thank-you-icon">
             {% if request.session.score >= 50 %}
                 <i class="fas fa-check-circle" style="color: #4CAF50;"></i>
@@ -183,7 +193,7 @@
                 <i class="fas fa-times-circle" style="color: #F44336;"></i>
             {% endif %}
         </div>
-         
+        
         <!-- Заголовок будет меняться в зависимости от результата -->
         <h1>
             {% if request.session.score >= 50 %}
@@ -200,29 +210,21 @@
                 {% endfor %}
             </div>
         {% endif %}
-
+    
         <!-- Отображаем оценку -->
         {% if request.session.score %}
-            <div class="score-container">
+            <div class="score-container" style="{% if request.session.score < 50 %}background: linear-gradient(135deg, #F44336 0%, #E91E63 100%);{% endif %}">
                 <div class="score-label">Вы набрали:</div>
-                <div class="score-value">{{ request.session.score }}</div>
+                <div class="score-value" style="{% if request.session.score < 50 %}color: #F44336;{% endif %}">
+                    {{ request.session.score }}
+                </div>
                 <div class="score-label">баллов из 100</div>
-                
-                <!-- <div class="feedback-message">
-                    {% if request.session.score >= 80 %}
-                        <p><span class="emoji">🎉</span> Отличный результат! Спасибо за подробные ответы.</p>
-                    {% elif request.session.score >= 50 %}
-                        <p><span class="emoji">👍</span> Хороший результат! Есть куда расти.</p>
-                    {% else %}
-                        <p><span class="emoji">💪</span> В следующий раз получится лучше!</p>
-                    {% endif %}
-                </div> -->
             </div>
         {% else %}
             <p>Оценка не доступна.</p>
         {% endif %}
         
-        <a href="/" class="btn-home">
+        <a href="/" class="btn-home" style="{% if request.session.score < 50 %}background: #F44336;{% endif %}">
             <i class="fas fa-home"></i> Вернуться на главную
         </a>
     </div>

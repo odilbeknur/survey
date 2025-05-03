@@ -66,14 +66,10 @@
     .question {
         margin-bottom: 30px;
         display: none;
-        padding: 25px;
-        background-color: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        border-left: 6px solid #4361ee;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #4361ee;
     }
 
     .question.active {
@@ -407,13 +403,11 @@
     }
 
     .question-text {
-        font-size: 20px;
-        font-weight: 700;
-        margin-bottom: 25px;
-        color: #2c3e50;
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #212529;
         line-height: 1.4;
-        position: relative;
-        padding-left: 20px;
     }
 
     .survey-instructions {
@@ -438,42 +432,6 @@
     .instructions-list-main li {
         margin-bottom: 8px;
     }
-    .modal-content {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  }
-  
-  .modal-header {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-  
-  .modal-title {
-    font-weight: 600;
-    color: #2c3e50;
-  }
-  
-  .modal-body {
-    padding: 2rem;
-  }
-  
-  .modal-footer {
-    border-top: none;
-    padding-top: 0;
-  }
-  
-  #confirm-submit {
-    background-color: #4e73df;
-    border-color: #4e73df;
-    padding: 0.5rem 1.5rem;
-    font-weight: 500;
-  }
-  
-  #confirm-submit:hover {
-    background-color: #3a5bc7;
-    border-color: #3a5bc7;
-  }
 </style>
 
 <section class="pt-6 pb-9">
@@ -485,33 +443,18 @@
         </div>
         
         <!-- Улучшенная шкала прогресса -->
-       
+        <div class="progress-container">
+            <div class="progress-header">
+                <div class="progress-title">Ваш прогресс</div>
+                <div class="progress-count" id="progress-count">0/{{ survey.questions.count }}</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
 
         <div class="row justify-content-between">
-            <div class="col-lg-3 col-xl-3">
-                <div class="card mt-5 mt-lg-0">
-                    <div class="card-body">
-                        <div class="progress-container">
-                            <div class="progress-header">
-                                <div class="progress-title">Прогресс</div>
-                                <div class="progress-count" id="progress-count">0/{{ survey.questions.count }}</div>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div class="card mb-3">
-                            <div class="card-body">
-                                <h5 class="card-title mb-3">Вопросы</h5>
-                                <div class="question-numbers" id="sidebar-questions">
-                                    <!-- Будет заполнено JavaScript -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-6 col-xl-6">
+            <div class="col-lg-7 col-xl-7">
                 <form method="post" id="survey-form">
                     {% csrf_token %}
                     
@@ -530,7 +473,7 @@
                         </button>
                     </div>
             </div>
-            <div class="col-lg-3 col-xl-3">
+            <div class="col-lg-5 col-xl-4">
                 <div class="card mt-5 mt-lg-0">
                     <div class="card-body">
                         <!-- Улучшенный таймер -->
@@ -538,6 +481,16 @@
                             <div class="timer-text">Оставшееся время</div>
                             <div class="timer-display" id="timer">{{ survey.duration_minutes|default:"30" }}:00</div>
                         </div>
+
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">Вопросы</h5>
+                                <div class="question-numbers" id="sidebar-questions">
+                                    <!-- Будет заполнено JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Перенесённая инструкция перед кнопкой завершения -->
                         <div class="completion-instructions">
                             <div class="instructions-title">
@@ -562,32 +515,6 @@
         </div>
     </div>
 </section>
-
-<div id="confirmation-modal" class="modal fade" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Подтверждение завершения теста</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body text-center">
-          <div class="mb-4">
-            <i class="fas fa-question-circle fa-4x text-primary"></i>
-          </div>
-          <h4 class="mb-3">Вы уверены, что хотите завершить тест?</h4>
-          <p class="text-muted">После завершения вы не сможете изменить свои ответы.</p>
-        </div>
-        <div class="modal-footer justify-content-center">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            <i class="fas fa-arrow-left me-2"></i> Вернуться к тесту
-          </button>
-          <button type="button" class="btn btn-primary" id="confirm-submit">
-            <i class="fas fa-check me-2"></i> Да, завершить
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 
 <script>
     // Глобальные переменные
@@ -905,7 +832,6 @@
     }
 
     function setupEventListeners() {
-        // Обработчики кликов по вариантам ответов
         document.querySelectorAll('.form-group').forEach(group => {
             group.addEventListener('click', function(e) {
                 if (!e.target.classList.contains('form-check-input')) {
@@ -922,7 +848,6 @@
             });
         });
 
-        // Обработчики изменений в полях ввода
         document.querySelectorAll('input, select').forEach(input => {
             input.addEventListener('change', function() {
                 const questionId = this.closest('.question').id.split('-')[1];
@@ -930,53 +855,11 @@
             });
         });
 
-        // Получаем элементы формы и модального окна
         const form = document.getElementById('survey-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const modalElement = document.getElementById('confirmation-modal');
-        
-        // Инициализируем модальное окно, если оно существует
-        let modal = null;
-        if (modalElement) {
-            modal = new bootstrap.Modal(modalElement);
-        }
-
-        // Обработчик для кнопки отправки
-        if (submitBtn) {
-            submitBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (modal) {
-                    modal.show();
-                } else if (form) {
-                    // Если модального окна нет, отправляем форму сразу
-                    localStorage.removeItem('surveyTimer_' + {{ survey.id }});
-                    localStorage.removeItem('surveyAnswers_' + {{ survey.id }});
-                    localStorage.removeItem('surveySeed_' + {{ survey.id }});
-                    form.submit();
-                }
-            });
-        }
-
-        // Обработчик для кнопки подтверждения в модальном окне
-        const confirmSubmitBtn = document.getElementById('confirm-submit');
-        if (confirmSubmitBtn && form) {
-            confirmSubmitBtn.addEventListener('click', function() {
-                localStorage.removeItem('surveyTimer_' + {{ survey.id }});
-                localStorage.removeItem('surveyAnswers_' + {{ survey.id }});
-                localStorage.removeItem('surveySeed_' + {{ survey.id }});
-                form.submit();
-                if (modal) {
-                    modal.hide();
-                }
-            });
-        }
-
-        // Обработчик отправки формы (на случай, если форма отправляется другим способом)
         if (form) {
             form.addEventListener('submit', function(e) {
                 localStorage.removeItem('surveyTimer_' + {{ survey.id }});
                 localStorage.removeItem('surveyAnswers_' + {{ survey.id }});
-                localStorage.removeItem('surveySeed_' + {{ survey.id }});
             });
         }
     }
