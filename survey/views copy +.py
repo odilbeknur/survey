@@ -98,7 +98,7 @@ def survey_view(request, survey_id):
             survey = Response.objects.create(
                 survey=survey,
                 employee_name=employee_name,
-                station_name=settings.STATION_NAME
+                station_name=settings.PLANT_NAME
             )
 
             for answer in answers_to_save:

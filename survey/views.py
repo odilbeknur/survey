@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 import requests
+from .kafka.producer import send_exam_result 
 
 
 # Отображение списка форм
@@ -21,6 +22,7 @@ def survey_list_view(request):
     questions  = Question.objects.all()  
     print("SURVEYS", surveys)
     return render(request, 'survey_list.html', {'surveys': surveys, 'questions': questions})
+
 
 
 # Отображение формы по id
@@ -86,11 +88,11 @@ def survey_view(request, survey_id):
                 has_errors = True
 
         if not has_errors:
-            employee_name = request.session.get('employee_name') or "Неизвестный"
+            employee_uuid = request.session.get('employee_uuid') or "Неизвестный"
             survey_response = Response.objects.create(
                 survey=survey,
-                employee_name=employee_name,
-                station_name=settings.STATION_NAME
+                employee_uuid=employee_uuid,
+                station_name=settings.PLANT_NAME
             )
 
             for answer in answers_to_save:
@@ -107,6 +109,17 @@ def survey_view(request, survey_id):
 
             # Получаем оценку из результата
             score = survey_response.score  # Предположим, что `evaluate` устанавливает оценку на `survey_response`
+            print("ТЕМА: ",survey.topic)
+            print("Оценка",survey_response.score)
+            send_exam_result({
+                'employee_uuid': str(survey_response.employee_uuid),
+                'station_name': survey_response.station_name,
+                'topic': survey.topic,
+                'score': survey_response.score,
+                'passed': survey_response.score >= 50,  # Пример: если 60 и выше — экзамен сдан
+                'finished_at': survey_response.finished_at.isoformat()
+            })
+
 
             # Сохраняем оценку в сессию для использования на странице "Thank You"
             request.session['score'] = score
@@ -325,7 +338,7 @@ handler404 = custom_404
 
 
 def select_employee_view(request):
-    station_id = 1  # Возможно, этот ID станции будет динамическим
+    station_id = 28  # Возможно, этот ID станции будет динамическим
     org_units = []
     surveys = Survey.objects.all()
 
@@ -340,24 +353,52 @@ def select_employee_view(request):
 
     if request.method == 'POST':
         survey_id = request.POST.get('survey_id')
-        employee_name = request.POST.get('employee_name')
-        print("EMPLOYEE NAME",employee_name)
+        employee_uuid = request.POST.get('employee_uuid')
+        
         # Проверка, что выбраны все необходимые данные
-        if not survey_id or not employee_name:
+        if not survey_id or not employee_uuid:
             return render(request, 'select_employee.html', {
                 'org_units': org_units,
                 'surveys': surveys,
                 'error': "Пожалуйста, выберите тест и сотрудника."
             })
 
+        # Проверяем, проходил ли сотрудник этот тест ранее
+        last_response = Response.objects.filter(
+            survey_id=survey_id,
+            employee_uuid=employee_uuid
+        ).order_by('-finished_at').first()
+
+        if last_response:
+            now = timezone.now()
+            cooldown_period = None
+            
+            if last_response.passed:
+                # Для прошедших тест - 1 год
+                cooldown_period = timedelta(days=365)
+                error_message = "Вы уже успешно прошли этот тест. Повторная сдача возможна через 1 год с даты последней сдачи."
+            else:
+                # Для не прошедших тест - 1 месяц
+                cooldown_period = timedelta(days=30)
+                error_message = "Вы не прошли этот тест. Повторная попытка возможна через 1 месяц с даты последней попытки."
+
+            # Проверяем, прошло ли достаточно времени
+            if (now - last_response.finished_at) < cooldown_period:
+                return render(request, 'select_employee.html', {
+                    'org_units': org_units,
+                    'surveys': surveys,
+                    'error': error_message
+                })
+
         # Сохраняем данные в сессии
-        request.session['employee_name'] = employee_name
+        request.session['employee_uuid'] = employee_uuid
         return redirect('survey:survey', survey_id=survey_id)
 
     return render(request, 'select_employee.html', {
         'org_units': org_units,
         'surveys': surveys
     })
+
 
 def employees_by_orgunit_view(request):
     department_id = request.GET.get("org_unit")
@@ -370,3 +411,19 @@ def employees_by_orgunit_view(request):
 
     # Отправляем HTML с выбором сотрудников, чтобы HTMX мог его вставить
     return render(request, "_employee_select.html", {"employees": employees})
+
+
+# TEST KAFKA
+from django.http import JsonResponse
+from .kafka.producer import send_exam_result  # путь укажи согласно структуре
+
+def test_kafka_send(request):
+    send_exam_result({
+        'employee_uuid': '123e4567-e89b-12d3-a456-426614174000',
+        'survey_id': 1,
+        'station_name': '28',
+        'score': 95.0,
+        'passed': True,
+        'finished_at': '2025-04-30T12:00:00',
+    })
+    return JsonResponse({'status': 'Kafka message sent'})

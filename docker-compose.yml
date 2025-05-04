@@ -53,6 +53,7 @@ services:
     networks:
       - examiner_network
 
+
 volumes:
   postgres_data:
   static_volume:

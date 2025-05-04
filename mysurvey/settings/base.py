@@ -20,7 +20,7 @@ ENV = os.getenv("DJANGO_ENV", "development")
 
 load_dotenv()
 
-STATION_NAME = os.getenv("STATION_NAME", "Неизвестная станция")
+PLANT_NAME = os.getenv("PLANT_NAME", "Неизвестная станция")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -93,6 +93,10 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+
+KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
+KAFKA_TOPIC_EXAM_RESULTS = 'exam_results'
 
 
 # Internationalization

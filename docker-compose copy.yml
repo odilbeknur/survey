@@ -1,0 +1,88 @@
+services:
+  examiner_db:
+    container_name: examiner_db
+    image: postgres:16.3-alpine3.20
+    restart: always
+    env_file:  
+      - .env.production
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  
+    networks:
+      - examiner_network 
+
+  django:
+    container_name: examiner_main
+    build: .
+    restart: always
+    command: >
+      sh -c "python manage.py collectstatic --noinput &&
+             python manage.py migrate &&
+             gunicorn --workers 4 --bind 0.0.0.0:8000 mysurvey.wsgi:application"
+    env_file:  
+      - .env.production
+    depends_on:
+      - examiner_db
+    volumes:
+      - .:/code
+      - static_volume:/code/staticfiles
+      - media_volume:/code/mediafiles
+    networks:
+      - examiner_network
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "5052:8080"
+    networks:
+      - examiner_network
+
+  nginx:
+    build: ./nginx
+    container_name: examiner_nginx
+    restart: always
+    volumes:
+      - static_volume:/code/staticfiles
+      - media_volume:/code/mediafiles
+    ports:
+      - "7777:80"
+    depends_on:
+      - django
+    networks:
+      - examiner_network
+  
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1  
+    depends_on:
+      - zookeeper
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  examiner_network:
+    name: examiner_network
+    driver: bridge

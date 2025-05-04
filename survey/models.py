@@ -60,7 +60,7 @@ class Choice(models.Model):
 
 class Response(models.Model):
     survey = models.ForeignKey(Survey, on_delete=models.CASCADE)
-    employee_name = models.CharField(max_length=255)
+    employee_uuid = models.UUIDField(blank=True, null=True)
     station_name = models.CharField(max_length=255, blank=True, null=True)
     started_at = models.DateTimeField(auto_now_add=True)
     finished_at = models.DateTimeField(blank=True, null=True)
@@ -68,7 +68,7 @@ class Response(models.Model):
     passed = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.employee_name} - {self.survey.title} @ {self.started_at}"
+        return f"{self.employee_uuid} - {self.survey.title} @ {self.started_at}"
 
     def evaluate(self):
         total_questions = self.survey.questions.count()
@@ -129,7 +129,7 @@ class Response(models.Model):
         else:
             self.score = 0
 
-        self.passed = self.score >= 70
+        self.passed = self.score >= 50
         print(f'\nИтоговый результат: {self.score}% — {"пройдено" if self.passed else "не пройдено"}')
         self.save()
 
